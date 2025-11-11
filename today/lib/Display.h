@@ -78,8 +78,7 @@
 #define STORM_GRAY 0x2589
 #define FOG_GRAY 0x8C51
 
-class Display
-{
+class Display {
 private:
   static GigaDisplay_GFX display;
   static Arduino_GigaDisplayTouch touch;
@@ -93,8 +92,7 @@ private:
   static const unsigned long touchDebounceTime = 200; // 2 second debounce to prevent rapid toggling
 
 private:
-  static void drawWeatherIcon(int centerX, int centerY)
-  {
+  static void drawWeatherIcon(int centerX, int centerY) {
     // Draw a custom pixel-based weather icon (sun with cloud) 🌤️
 
     // Draw sun (yellow circle with rays)
@@ -150,14 +148,12 @@ private:
   }
 
 private:
-  static void resetTextSize()
-  {
+  static void resetTextSize() {
     display.setTextSize(2);
   }
 
 public:
-  static void init()
-  {
+  static void init() {
     display.begin();
     touch.begin(); // Initialize touch interface
     backlight.begin();
@@ -178,23 +174,19 @@ public:
     drawWeatherIcon(centerX, centerY);
   }
 
-  static void setBacklight(bool on)
-  {
-    if (on)
-    {
+  static void setBacklight(bool on) {
+    if (on) {
       // Turn on display
       backlight.set(100);
       currentY = margin;
     }
-    else
-    {
+    else {
       backlight.set(0);
     }
     displayOn = on;
   }
 
-  static bool checkTouch()
-  {
+  static bool checkTouch() {
     // Check if screen is touched using the proper Arduino_GigaDisplayTouch library
     unsigned long currentTime = millis();
 
@@ -202,15 +194,12 @@ public:
     GDTpoint_t points[5]; // Support up to 5 touch points
     uint8_t contacts = touch.getTouchPoints(points);
 
-    if (contacts > 0)
-    {
+    if (contacts > 0) {
       // Touch is currently detected
-      if (!touchInProgress)
-      {
+      if (!touchInProgress) {
         // This is a new touch (finger just pressed down)
         // Debounce check
-        if (currentTime - lastTouchTime < touchDebounceTime)
-        {
+        if (currentTime - lastTouchTime < touchDebounceTime) {
           return false;
         }
 
@@ -231,47 +220,39 @@ public:
       // Touch is still ongoing, don't trigger again
       return false;
     }
-    else
-    {
+    else {
       // No touch detected - reset touch in progress flag
       touchInProgress = false;
       return false;
     }
   }
 
-  static void handleTouchToggle()
-  {
-    if (checkTouch())
-    {
+  static void handleTouchToggle() {
+    if (checkTouch()) {
       displayOn = !displayOn;
       setBacklight(displayOn);
     }
   }
 
-  static void refreshDisplay()
-  {
-    if (!displayOn)
-    {
+  static void refreshDisplay() {
+    if (!displayOn) {
       return;
     }
 
     clearScreen();
   }
 
-  static bool isDisplayOn()
-  {
+  static bool isDisplayOn() {
     return displayOn;
   }
 
-  static void clearScreen()
-  {
+  static void clearScreen() {
     // Always clear when explicitly called, regardless of display state
     display.fillScreen(BLACK);
     currentY = margin;
   }
 
-  static void printLine(const String &text, uint16_t color = WHITE)
-  {
+  static void printLine(const String& text, uint16_t color = WHITE) {
     if (!displayOn)
       return; // Don't print if display is off
 
@@ -281,14 +262,12 @@ public:
     currentY += lineHeight;
 
     // Wrap to top if we've reached the bottom
-    if (currentY > display.height() - lineHeight)
-    {
+    if (currentY > display.height() - lineHeight) {
       currentY = margin;
     }
   }
 
-  static void displayRealtimeWeather(const RealtimeWeatherData &data)
-  {
+  static void displayRealtimeWeather(const RealtimeWeatherData& data) {
     Serial.print("DisplayOn");
     Serial.println(displayOn);
 
@@ -297,8 +276,7 @@ public:
 
     printLine("=== CURRENT WEATHER ===", CYAN);
 
-    if (!data.isValid)
-    {
+    if (!data.isValid) {
       printLine("No realtime data available", RED);
       return;
     }
@@ -324,15 +302,13 @@ public:
     printLine(""); // Empty line
   }
 
-  static void displayForecast(const ForecastData &data)
-  {
+  static void displayForecast(const ForecastData& data) {
     if (!displayOn)
       return; // Don't display if screen is off
 
     printLine("=== 7-DAY FORECAST ===", CYAN);
 
-    if (!data.isValid || data.dayCount == 0)
-    {
+    if (!data.isValid || data.dayCount == 0) {
       printLine("No forecast data available", RED);
       return;
     }
@@ -340,9 +316,8 @@ public:
     // Display only first 3 days due to screen space
     int displayDays = min(data.dayCount, 3);
 
-    for (int i = 0; i < displayDays; i++)
-    {
-      const DailyForecastData &day = data.daily[i];
+    for (int i = 0; i < displayDays; i++) {
+      const DailyForecastData& day = data.daily[i];
 
       if (!day.isValid)
         continue;
@@ -355,8 +330,7 @@ public:
     }
   }
 
-  static void displayError(const String &message)
-  {
+  static void displayError(const String& message) {
     if (!displayOn)
       return; // Don't display if screen is off
 

@@ -4,8 +4,7 @@
 #include <WiFi.h>
 #include <ArduinoHttpClient.h>
 
-struct DailyForecastData
-{
+struct DailyForecastData {
   String date;
   float cloudCoverAvg;
   float temperatureApparentAvg;
@@ -16,31 +15,28 @@ struct DailyForecastData
   bool isValid;
 };
 
-struct ForecastData
-{
+struct ForecastData {
   static const int MAX_DAYS = 7;
   DailyForecastData daily[MAX_DAYS];
   int dayCount;
   bool isValid;
 };
 
-class WeatherForecast
-{
+class WeatherForecast {
 private:
   String apiKey;
   String location;
   WiFiSSLClient wifiSSLClient;
 
 public:
-  WeatherForecast(const String &key, const String &loc)
-      : apiKey(key), location(loc) {}
+  WeatherForecast(const String& key, const String& loc)
+    : apiKey(key), location(loc) {
+  }
 
-  ForecastData fetchForecastData()
-  {
-    ForecastData data = {{}, 0, false};
+  ForecastData fetchForecastData() {
+    ForecastData data = { {}, 0, false };
 
-    if (WiFi.status() != WL_CONNECTED)
-    {
+    if (WiFi.status() != WL_CONNECTED) {
       Serial.println("WiFi not connected");
       return data;
     }
@@ -57,19 +53,16 @@ public:
 
     int statusCode = http.responseStatusCode();
 
-    if (statusCode == 200)
-    {
+    if (statusCode == 200) {
       String payload = http.responseBody();
 
       Serial.println(payload);
 
-      if (parseForecastJson(payload, data))
-      {
+      if (parseForecastJson(payload, data)) {
         data.isValid = true;
       }
     }
-    else
-    {
+    else {
       Serial.print("HTTP error: ");
       Serial.println(statusCode);
     }
@@ -78,19 +71,16 @@ public:
     return data;
   }
 
-  bool parseForecastJson(const String &jsonString, ForecastData &data)
-  {
+  bool parseForecastJson(const String& jsonString, ForecastData& data) {
     DynamicJsonDocument doc(8192); // Larger buffer for forecast data
 
     DeserializationError error = deserializeJson(doc, jsonString);
-    if (error)
-    {
+    if (error) {
       Serial.println("JSON parsing failed");
       return false;
     }
 
-    if (!doc["timelines"]["daily"])
-    {
+    if (!doc["timelines"]["daily"]) {
       Serial.println("No daily timeline found");
       return false;
     }
@@ -98,8 +88,7 @@ public:
     JsonArray dailyArray = doc["timelines"]["daily"];
     data.dayCount = min((int)dailyArray.size(), ForecastData::MAX_DAYS);
 
-    for (int i = 0; i < data.dayCount; i++)
-    {
+    for (int i = 0; i < data.dayCount; i++) {
       JsonObject day = dailyArray[i];
       JsonObject values = day["values"];
 

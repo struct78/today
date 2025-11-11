@@ -4,8 +4,7 @@
 #include <WiFi.h>
 #include <ArduinoHttpClient.h>
 
-struct RealtimeWeatherData
-{
+struct RealtimeWeatherData {
   float uvIndex;
   float humidity;
   float windSpeed;
@@ -14,23 +13,21 @@ struct RealtimeWeatherData
   bool isValid;
 };
 
-class WeatherRealtime
-{
+class WeatherRealtime {
 private:
   String apiKey;
   String location;
   WiFiSSLClient wifiSSLClient;
 
 public:
-  WeatherRealtime(const String &key, const String &loc)
-      : apiKey(key), location(loc) {}
+  WeatherRealtime(const String& key, const String& loc)
+    : apiKey(key), location(loc) {
+  }
 
-  RealtimeWeatherData fetchWeatherData()
-  {
-    RealtimeWeatherData data = {0, 0, 0, 0, 0, false};
+  RealtimeWeatherData fetchWeatherData() {
+    RealtimeWeatherData data = { 0, 0, 0, 0, 0, false };
 
-    if (WiFi.status() != WL_CONNECTED)
-    {
+    if (WiFi.status() != WL_CONNECTED) {
       Serial.println("WiFi not connected");
       return data;
     }
@@ -49,22 +46,19 @@ public:
 
     int statusCode = http.responseStatusCode();
 
-    if (statusCode == 200)
-    {
+    if (statusCode == 200) {
       String payload = http.responseBody();
       DynamicJsonDocument doc(2048);
 
       DeserializationError error = deserializeJson(doc, payload);
-      if (error)
-      {
+      if (error) {
         Serial.println("JSON parsing failed");
         http.stop();
         return data;
       }
 
       // Extract the required fields from data.values
-      if (doc["data"]["values"])
-      {
+      if (doc["data"]["values"]) {
         JsonObject values = doc["data"]["values"];
         data.uvIndex = values["uvIndex"] | 0.0f;
         data.humidity = values["humidity"] | 0.0f;
@@ -74,8 +68,7 @@ public:
         data.isValid = true;
       }
     }
-    else
-    {
+    else {
       String payload = http.responseBody();
       Serial.println(payload);
       Serial.print("HTTP error: ");
@@ -86,18 +79,15 @@ public:
     return data;
   }
 
-  bool parseRealtimeJson(const String &jsonString, RealtimeWeatherData &data)
-  {
+  bool parseRealtimeJson(const String& jsonString, RealtimeWeatherData& data) {
     DynamicJsonDocument doc(2048);
 
     DeserializationError error = deserializeJson(doc, jsonString);
-    if (error)
-    {
+    if (error) {
       return false;
     }
 
-    if (doc["data"]["values"])
-    {
+    if (doc["data"]["values"]) {
       JsonObject values = doc["data"]["values"];
       data.uvIndex = values["uvIndex"] | 0.0f;
       data.humidity = values["humidity"] | 0.0f;

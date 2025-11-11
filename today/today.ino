@@ -6,15 +6,14 @@
 #include "lib/Display.h"
 
 // Global weather objects (re-enabled now that WiFi is available)
-WeatherRealtime *realtimeWeather;
-WeatherForecast *forecastWeather;
+WeatherRealtime* realtimeWeather;
+WeatherForecast* forecastWeather;
 
 // Timing variables
 unsigned long lastUpdate = 0;
-const unsigned long UPDATE_INTERVAL = 1000 * 60 * 5; // 5 minutes between updates
+const unsigned long UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutes between updates
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
   Serial.println("Weather Station Starting...");
   Serial.println("Antenna connected - WiFi enabled");
@@ -28,15 +27,13 @@ void setup()
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int connectionAttempts = 0;
-  while (WiFi.status() != WL_CONNECTED && connectionAttempts < 20)
-  {
+  while (WiFi.status() != WL_CONNECTED && connectionAttempts < 20) {
     delay(2000);
     Serial.print(".");
     connectionAttempts++;
   }
 
-  if (WiFi.status() == WL_CONNECTED)
-  {
+  if (WiFi.status() == WL_CONNECTED) {
     Serial.println();
     Serial.print("WiFi connected! IP address: ");
     Serial.println(WiFi.localIP());
@@ -52,8 +49,7 @@ void setup()
     Serial.println("Fetching initial weather data...");
     updateWeatherData();
   }
-  else
-  {
+  else {
     Serial.println();
     Serial.println("WiFi connection failed!");
     Serial.print("WiFi status: ");
@@ -66,17 +62,14 @@ void setup()
   delay(2000);
 }
 
-void loop()
-{
+void loop() {
   // Handle touch input for display toggle
   Display::handleTouchToggle();
 
   // Check if WiFi is connected and update weather data periodically
-  if (WiFi.status() == WL_CONNECTED)
-  {
+  if (WiFi.status() == WL_CONNECTED) {
     unsigned long currentTime = millis();
-    if (currentTime - lastUpdate > UPDATE_INTERVAL)
-    {
+    if (currentTime - lastUpdate > UPDATE_INTERVAL) {
       Serial.println("Updating weather data...");
       updateWeatherData();
       lastUpdate = currentTime;
@@ -87,10 +80,8 @@ void loop()
   delay(100);
 }
 
-void updateWeatherData()
-{
-  if (WiFi.status() != WL_CONNECTED)
-  {
+void updateWeatherData() {
+  if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi not connected - skipping weather update");
     return;
   }
@@ -101,13 +92,11 @@ void updateWeatherData()
   RealtimeWeatherData realtimeData = realtimeWeather->fetchWeatherData();
   Display::clearScreen();
 
-  if (realtimeData.isValid)
-  {
+  if (realtimeData.isValid) {
     Serial.println("Realtime weather data received successfully");
     Display::displayRealtimeWeather(realtimeData);
   }
-  else
-  {
+  else {
     Serial.println("Failed to get realtime weather data");
     Display::displayError("Failed to get current weather");
   }
@@ -116,13 +105,11 @@ void updateWeatherData()
   Serial.println("Fetching weather forecast...");
   ForecastData forecastData = forecastWeather->fetchForecastData();
 
-  if (forecastData.isValid)
-  {
+  if (forecastData.isValid) {
     Serial.println("Forecast data received successfully");
     Display::displayForecast(forecastData);
   }
-  else
-  {
+  else {
     Serial.println("Failed to get forecast data");
     Display::displayError("Failed to get forecast");
   }
