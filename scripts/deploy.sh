@@ -1,7 +1,7 @@
 #!/bin/zsh
 
-# deploy.sh - Arduino Giga Weather Station Deployment Script
-# This script automatically detects connected Arduino Giga and deploys the weather station
+# deploy.sh - Today Deployment Script
+# This script automatically detects connected Arduino Giga and deploys the project
 
 set -e  # Exit on any error
 
@@ -13,11 +13,11 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Project configuration
-PROJECT_DIR="/Users/dave/Documents/Github/today/today"
+PROJECT_DIR="$(dirname "$(realpath "$0")")/../today"
 BOARD_FQBN="arduino:mbed_giga:giga"
 SKETCH_NAME="today"
 
-echo "${BLUE}🚀 Arduino Giga Weather Station Deployment${NC}"
+echo "${BLUE}🚀 Today Deployment${NC}"
 echo "================================================="
 echo
 
@@ -114,7 +114,7 @@ fi
 
 echo
 
-echo "${YELLOW}🔨 Step 4: Compiling weather station sketch...${NC}"
+echo "${YELLOW}🔨 Step 4: Compiling display screen sketch...${NC}"
 arduino-cli compile --fqbn "$BOARD_FQBN" .
 
 if [ $? -eq 0 ]; then
@@ -135,15 +135,15 @@ arduino-cli upload -p "$GIGA_PORT" --fqbn "$BOARD_FQBN" .
 
 if [ $? -eq 0 ]; then
     echo
-    echo "${GREEN}🎉 SUCCESS! Weather station deployed successfully!${NC}"
+    echo "${GREEN}🎉 SUCCESS! Display screen deployed successfully!${NC}"
     echo
     echo "📋 Next steps:"
     echo "1. Open Serial Monitor to see debug output:"
     echo "   arduino-cli monitor -p $GIGA_PORT"
-    echo "2. Check the display for weather information"
-    echo "3. The station will update every 5 minutes"
+    echo "2. Check the display for information"
+    echo "3. Touch the screen to toggle display on/off"
     echo
-    echo "🌤️  Your Arduino Giga Weather Station is now running!"
+    echo "🖥️  Your Today is now running!"
     
     # Ask if user wants to open serial monitor
     # echo

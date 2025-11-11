@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "=== Weather Station Arduino Giga Build Script ==="
+echo "=== Display Build Script ==="
 echo "Checking library paths and compilation..."
 echo
 
@@ -10,8 +10,10 @@ if ! command -v arduino-cli &> /dev/null; then
     exit 1
 fi
 
-# Set working directory
-cd "/Users/dave/Documents/Github/today/today"
+# Set working directory relative to script location
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+PROJECT_DIR="$SCRIPT_DIR/../today"
+cd "$PROJECT_DIR"
 
 echo "1. Checking installed libraries:"
 echo "ArduinoJson: $(find /Users/dave/Documents/Arduino/libraries -name "ArduinoJson" 2>/dev/null)"
@@ -24,7 +26,7 @@ echo "2. Checking Arduino Giga core:"
 arduino-cli core list | grep giga
 echo
 
-echo "3. Compiling weather station..."
+echo "3. Compiling..."
 arduino-cli compile --fqbn arduino:mbed_giga:giga --verbose .
 
 echo

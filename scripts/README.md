@@ -1,6 +1,6 @@
-# Deployment Scripts for Arduino Giga Weather Station
+# Deployment scripts for Today
 
-This directory contains several zsh scripts to make deploying and monitoring your weather station easy.
+This directory contains several zsh scripts to make deploying and monitoring your display screen easy.
 
 ## 🚀 Deployment Scripts
 
@@ -81,7 +81,7 @@ arduino-cli upload -p /dev/cu.usbmodem1234 --fqbn arduino:mbed_giga:giga .
 arduino-cli monitor -p /dev/cu.usbmodem1234 --config baudrate=115200
 ```
 
-## 📱 Monitoring Your Weather Station
+## 📱 Monitoring Your Display
 
 After deployment:
 
