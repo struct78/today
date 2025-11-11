@@ -95,7 +95,6 @@ private:
 private:
   static void drawWeatherIcon(int centerX, int centerY)
   {
-    display.fillScreen(DEEP_SKY_BLUE);
     // Draw a custom pixel-based weather icon (sun with cloud) 🌤️
 
     // Draw sun (yellow circle with rays)
@@ -246,22 +245,6 @@ public:
     {
       displayOn = !displayOn;
       setBacklight(displayOn);
-
-      if (displayOn)
-      {
-        Serial.println("Touch detected - Display ON");
-        refreshDisplay();
-        // Show demo content since no WiFi available
-        printLine("Weather Station Demo", WHITE);
-        printLine("WiFi: Not available", YELLOW);
-        printLine("Antenna needed", YELLOW);
-        printLine("", WHITE);
-        printLine("Touch screen to turn off", GRAY);
-      }
-      else
-      {
-        Serial.println("Touch detected - Display OFF");
-      }
     }
   }
 
@@ -282,11 +265,7 @@ public:
 
   static void clearScreen()
   {
-    if (!displayOn)
-    {
-      return;
-    }
-
+    // Always clear when explicitly called, regardless of display state
     display.fillScreen(BLACK);
     currentY = margin;
   }
@@ -310,6 +289,9 @@ public:
 
   static void displayRealtimeWeather(const RealtimeWeatherData &data)
   {
+    Serial.print("DisplayOn");
+    Serial.println(displayOn);
+
     if (!displayOn)
       return; // Don't display if screen is off
 
