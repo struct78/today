@@ -1,0 +1,17 @@
+{
+  "cpu": {
+    "fqbn": "arduino:mbed_giga:giga",
+    "name": "Arduino GIGA R1 WiFi",
+    "type": "serial"
+  },
+  "directories": {
+    "userLdir": "/Users/dave/Documents/Arduino/libraries"
+  },
+  "sketch": {
+    "cpu": {
+      "fqbn": "arduino:mbed_giga:giga",
+      "name": "Arduino GIGA R1 WiFi",
+      "type": "serial"
+    }
+  }
+}

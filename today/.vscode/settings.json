@@ -1,0 +1,16 @@
+{
+  "arduino.path": "/Applications/Arduino.app",
+  "arduino.commandPath": "arduino-cli",
+  "arduino.additionalUrls": [
+    "https://downloads.arduino.cc/packages/package_index.json"
+  ],
+  "arduino.logLevel": "info",
+  "arduino.enableUSBDetection": true,
+  "arduino.disableTestingOpen": true,
+  "C_Cpp.intelliSenseEngine": "default",
+  "C_Cpp.errorSquiggles": "enabled",
+  "files.associations": {
+    "*.ino": "cpp",
+    "*.h": "cpp"
+  }
+}

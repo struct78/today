@@ -1,0 +1,242 @@
+// today.test.cpp - Unit tests for weather station
+#include <AUnit.h>
+#include "lib/WeatherRealtime.h"
+#include "lib/WeatherForecast.h"
+
+using namespace aunit;
+
+// Test realtime weather data parsing
+test(WeatherRealtimeTest, parseRealtimeJson)
+{
+  WeatherRealtime weather("test_key", "test_location");
+  RealtimeWeatherData data;
+
+  // Test with valid JSON from example-realtime.json
+  String validJson = R"({
+    "data": {
+      "time": "2025-11-08T01:13:00Z",
+      "values": {
+        "cloudCover": 96,
+        "humidity": 92,
+        "uvIndex": 1,
+        "windDirection": 209,
+        "windSpeed": 8.2
+      }
+    }
+  })";
+
+  bool result = weather.parseRealtimeJson(validJson, data);
+
+  assertTrue(result);
+  assertTrue(data.isValid);
+  assertEqual(96.0f, data.cloudCover);
+  assertEqual(92.0f, data.humidity);
+  assertEqual(1.0f, data.uvIndex);
+  assertEqual(209.0f, data.windDirection);
+  assertEqual(8.2f, data.windSpeed);
+}
+
+test(WeatherRealtimeTest, parseRealtimeJsonInvalid)
+{
+  WeatherRealtime weather("test_key", "test_location");
+  RealtimeWeatherData data;
+
+  // Test with invalid JSON
+  String invalidJson = R"({"invalid": "json"})";
+
+  bool result = weather.parseRealtimeJson(invalidJson, data);
+
+  assertFalse(result);
+  assertFalse(data.isValid);
+}
+
+test(WeatherRealtimeTest, parseRealtimeJsonMalformed)
+{
+  WeatherRealtime weather("test_key", "test_location");
+  RealtimeWeatherData data;
+
+  // Test with malformed JSON
+  String malformedJson = R"({"data": "incomplete})";
+
+  bool result = weather.parseRealtimeJson(malformedJson, data);
+
+  assertFalse(result);
+}
+
+// Test forecast weather data parsing
+test(WeatherForecastTest, parseForecastJson)
+{
+  WeatherForecast weather("test_key", "test_location");
+  ForecastData data;
+
+  // Test with valid JSON from example-forecast.json (simplified)
+  String validJson = R"({
+    "timelines": {
+      "daily": [
+        {
+          "time": "2025-11-07T11:00:00Z",
+          "values": {
+            "cloudCoverAvg": 96,
+            "temperatureApparentAvg": 10.5,
+            "temperatureAvg": 10.5,
+            "uvIndexAvg": 0,
+            "windDirectionAvg": 187,
+            "windSpeedAvg": 3.7
+          }
+        },
+        {
+          "time": "2025-11-08T11:00:00Z",
+          "values": {
+            "cloudCoverAvg": 74,
+            "temperatureApparentAvg": 12.2,
+            "temperatureAvg": 11.8,
+            "uvIndexAvg": 1,
+            "windDirectionAvg": 195,
+            "windSpeedAvg": 4.1
+          }
+        }
+      ]
+    }
+  })";
+
+  bool result = weather.parseForecastJson(validJson, data);
+
+  assertTrue(result);
+  assertTrue(data.isValid);
+  assertEqual(2, data.dayCount);
+
+  // Check first day
+  assertTrue(data.daily[0].isValid);
+  assertEqual(96.0f, data.daily[0].cloudCoverAvg);
+  assertEqual(10.5f, data.daily[0].temperatureApparentAvg);
+  assertEqual(10.5f, data.daily[0].temperatureAvg);
+  assertEqual(0.0f, data.daily[0].uvIndexAvg);
+  assertEqual(187.0f, data.daily[0].windDirectionAvg);
+  assertEqual(3.7f, data.daily[0].windSpeedAvg);
+
+  // Check second day
+  assertTrue(data.daily[1].isValid);
+  assertEqual(74.0f, data.daily[1].cloudCoverAvg);
+  assertEqual(12.2f, data.daily[1].temperatureApparentAvg);
+  assertEqual(11.8f, data.daily[1].temperatureAvg);
+  assertEqual(1.0f, data.daily[1].uvIndexAvg);
+  assertEqual(195.0f, data.daily[1].windDirectionAvg);
+  assertEqual(4.1f, data.daily[1].windSpeedAvg);
+}
+
+test(WeatherForecastTest, parseForecastJsonInvalid)
+{
+  WeatherForecast weather("test_key", "test_location");
+  ForecastData data;
+
+  // Test with invalid JSON
+  String invalidJson = R"({"invalid": "json"})";
+
+  bool result = weather.parseForecastJson(invalidJson, data);
+
+  assertFalse(result);
+  assertFalse(data.isValid);
+  assertEqual(0, data.dayCount);
+}
+
+test(WeatherForecastTest, parseForecastJsonEmpty)
+{
+  WeatherForecast weather("test_key", "test_location");
+  ForecastData data;
+
+  // Test with empty daily array
+  String emptyJson = R"({
+    "timelines": {
+      "daily": []
+    }
+  })";
+
+  bool result = weather.parseForecastJson(emptyJson, data);
+
+  assertFalse(result);
+  assertEqual(0, data.dayCount);
+}
+
+test(WeatherForecastTest, parseForecastJsonMaxDays)
+{
+  WeatherForecast weather("test_key", "test_location");
+  ForecastData data;
+
+  // Test with more than MAX_DAYS entries
+  String manyDaysJson = R"({
+    "timelines": {
+      "daily": [)";
+
+  // Add 10 days (more than MAX_DAYS = 7)
+  for (int i = 0; i < 10; i++)
+  {
+    if (i > 0)
+      manyDaysJson += ",";
+    manyDaysJson += R"({
+      "time": "2025-11-0)" +
+                    String(7 + i) + R"(T11:00:00Z",
+      "values": {
+        "cloudCoverAvg": )" +
+                    String(50 + i) + R"(,
+        "temperatureApparentAvg": )" +
+                    String(10 + i) + R"(,
+        "temperatureAvg": )" +
+                    String(10 + i) + R"(,
+        "uvIndexAvg": )" +
+                    String(i) + R"(,
+        "windDirectionAvg": )" +
+                    String(180 + i) + R"(,
+        "windSpeedAvg": )" +
+                    String(3 + i) + R"(
+      }
+    })";
+  }
+  manyDaysJson += "]}";
+
+  bool result = weather.parseForecastJson(manyDaysJson, data);
+
+  assertTrue(result);
+  assertTrue(data.isValid);
+  assertEqual(ForecastData::MAX_DAYS, data.dayCount); // Should be limited to MAX_DAYS
+}
+
+// Test data structure initialization
+test(DataStructureTest, realtimeDataInitialization)
+{
+  RealtimeWeatherData data = {0, 0, 0, 0, 0, false};
+
+  assertEqual(0.0f, data.uvIndex);
+  assertEqual(0.0f, data.humidity);
+  assertEqual(0.0f, data.windSpeed);
+  assertEqual(0.0f, data.windDirection);
+  assertEqual(0.0f, data.cloudCover);
+  assertFalse(data.isValid);
+}
+
+test(DataStructureTest, forecastDataInitialization)
+{
+  ForecastData data = {{}, 0, false};
+
+  assertEqual(0, data.dayCount);
+  assertFalse(data.isValid);
+
+  // Check that daily array is properly initialized
+  for (int i = 0; i < ForecastData::MAX_DAYS; i++)
+  {
+    assertFalse(data.daily[i].isValid);
+  }
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  while (!Serial)
+    ; // Wait for Serial to initialize
+
+  Serial.println("Starting Weather Station Tests...");
+}
+
+void loop()
+{
+  TestRunner::run();
+}

@@ -1,0 +1,4 @@
+# Ignore credentials file
+credentials.h
+example*.json
+.DS_Store
