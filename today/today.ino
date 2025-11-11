@@ -11,7 +11,7 @@ WeatherForecast *forecastWeather;
 
 // Timing variables
 unsigned long lastUpdate = 0;
-const unsigned long UPDATE_INTERVAL = 300000; // 5 minutes between updates
+const unsigned long UPDATE_INTERVAL = 1000 * 60 * 5; // 5 minutes between updates
 
 void setup()
 {
@@ -97,7 +97,9 @@ void updateWeatherData()
 
   // Get realtime weather data
   Serial.println("Fetching realtime weather...");
+
   RealtimeWeatherData realtimeData = realtimeWeather->fetchWeatherData();
+  Display::clearScreen();
 
   if (realtimeData.isValid)
   {
