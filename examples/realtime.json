@@ -1,0 +1,30 @@
+{
+  "data": {
+    "time": "2025-11-08T01:13:00Z",
+    "values": {
+      "altimeterSetting": 1010.93,
+      "cloudBase": 0.4,
+      "cloudCeiling": 0.5,
+      "cloudCover": 96,
+      "dewPoint": 10.7,
+      "freezingRainIntensity": 0,
+      "humidity": 92,
+      "precipitationProbability": 0,
+      "pressureSeaLevel": 1011.13,
+      "pressureSurfaceLevel": 1011.42,
+      "rainIntensity": 0,
+      "sleetIntensity": 0,
+      "snowIntensity": 0,
+      "temperature": 11.8,
+      "temperatureApparent": 11.8,
+      "uvHealthConcern": 0,
+      "uvIndex": 1,
+      "visibility": 3.46,
+      "weatherCode": 2100,
+      "windDirection": 209,
+      "windGust": 12.7,
+      "windSpeed": 8.2
+    }
+  },
+  "location": { "lat": -37.87644194695991, "lon": 145.06346130288253 }
+}
