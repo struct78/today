@@ -143,7 +143,7 @@ if [ $? -eq 0 ]; then
     echo "2. Check the display for information"
     echo "3. Touch the screen to toggle display on/off"
     echo
-    echo "🖥️  Your Today is now running!"
+    echo "🖥️  Your display is now running!"
     
     # Ask if user wants to open serial monitor
     # echo
