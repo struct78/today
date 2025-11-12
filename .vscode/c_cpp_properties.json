@@ -2,7 +2,11 @@
   "configurations": [
     {
       "name": "Mac",
-      "includePath": ["${workspaceFolder}/**"],
+      "includePath": [
+        "${workspaceFolder}/**",
+        "~/Documents/Arduino/libraries/**",
+        "~/Library/Arduino15/packages/arduino/**"
+      ],
       "defines": [],
       "compilerPath": "/usr/bin/clang",
       "cStandard": "c17",
