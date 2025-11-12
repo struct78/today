@@ -1,28 +1,235 @@
 #include <SPI.h>
-#include <WiFi.h> // Re-enabled now that antenna is available
+#include <WiFi.h>
 #include "credentials.h"
 #include "lib/WeatherRealtime.h"
 #include "lib/WeatherForecast.h"
 #include "lib/Display.h"
 
-// Global weather objects (re-enabled now that WiFi is available)
 WeatherRealtime* realtimeWeather;
 WeatherForecast* forecastWeather;
 
-// Timing variables
 unsigned long lastUpdate = 0;
-const unsigned long UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutes between updates
+const unsigned long updateInterval = 8 * 60 * 1000; // 8 minutes between updates (safe for 25 req/hour limit)
+const bool offlineMode = true;
+bool isLoading = true;
+
+// Function declarations
+bool initializeWiFiConnection();
+bool isUpdateRequired();
+void clearScreen();
+void fetchAndDisplayForecast();
+void fetchAndDisplayRealtime();
+void initializeOfflineMode();
+void initializeSystem();
+void initializeWeatherClients();
+void updateWeatherData();
+RealtimeWeatherData loadTestRealtimeData();
+ForecastData loadTestForecastData();
 
 void setup() {
+  initializeSystem();
+
+  // Test the display with a simple message first
+  Serial.println("Testing display with simple message...");
+  Display::displayError("Display Test - If you see this, display works!");
+  delay(3000);
+
+  if (offlineMode) {
+    initializeOfflineMode();
+    return;
+  }
+
+  if (!initializeWiFiConnection()) {
+    delay(2000);
+    return;
+  }
+
+  initializeWeatherClients();
+  updateWeatherData();
+}
+
+void loop() {
+  if (isLoading) {
+    delay(5000);
+    isLoading = false;
+  }
+
+  // Handle touch input for display toggle
+  Display::handleTouchToggle();
+
+  // Update slideshow if weather data is available
+  Display::updateSlideShow();
+
+  // Check if it's time to update weather data periodically
+  if (isUpdateRequired()) {
+    Serial.println("Updating weather data...");
+    updateWeatherData();
+    lastUpdate = millis();
+  }
+
+  // Small delay to prevent excessive CPU usage
+  delay(100);
+}
+
+void updateWeatherData() {
+  if (!offlineMode && WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi not connected - skipping weather update");
+    return;
+  }
+
+  // Don't clear screen here as slideshow will handle display
+  fetchAndDisplayRealtime();
+  // Remove forecast for now to focus on slideshow
+  // fetchAndDisplayForecast();
+}
+
+void clearScreen() {
+  Serial.println("Clearing screen...");
+  Display::clearScreen();
+  Serial.println("Screen cleared");
+}
+
+// Test data loading functions
+RealtimeWeatherData loadTestRealtimeData() {
+  // Test data from examples/realtime.json
+  const char* testRealtimeJson = R"({
+    "data": {
+      "time": "2025-11-08T01:13:00Z",
+      "values": {
+        "altimeterSetting": 1010.93,
+        "cloudBase": 0.4,
+        "cloudCeiling": 0.5,
+        "cloudCover": 96,
+        "dewPoint": 10.7,
+        "freezingRainIntensity": 0,
+        "humidity": 92,
+        "precipitationProbability": 0,
+        "pressureSeaLevel": 1011.13,
+        "pressureSurfaceLevel": 1011.42,
+        "rainIntensity": 0,
+        "sleetIntensity": 0,
+        "snowIntensity": 0,
+        "temperature": 11.8,
+        "temperatureApparent": 11.8,
+        "uvHealthConcern": 0,
+        "uvIndex": 1,
+        "visibility": 3.46,
+        "weatherCode": 2100,
+        "windDirection": 209,
+        "windGust": 12.7,
+        "windSpeed": 8.2
+      }
+    },
+    "location": { "lat": -37.87644194695991, "lon": 145.06346130288253 }
+  })";
+
+  RealtimeWeatherData data = { 0, 0, 0, 0, 0, false };
+
+  // Use the existing parsing function from WeatherRealtime class
+  if (!realtimeWeather || !realtimeWeather->parseRealtimeJson(String(testRealtimeJson), data)) {
+    Serial.println("Failed to parse test realtime data");
+    return data;
+  }
+
+  Serial.println("Test realtime data parsed successfully");
+  data.isValid = true;  // Explicitly set isValid flag
+  return data;
+}
+
+ForecastData loadTestForecastData() {
+  Serial.println("=== Loading test forecast data ===");
+  // Test data from examples/forecast.json (simplified for this example)
+  const char* testForecastJson = R"({
+    "timelines": {
+      "daily": [
+        {
+          "time": "2025-11-08T00:00:00Z",
+          "values": {
+            "cloudCoverAvg": 61,
+            "temperatureApparentAvg": 10.7,
+            "temperatureAvg": 10.7,
+            "uvIndexAvg": 1,
+            "windSpeedAvg": 2.8,
+            "windDirectionAvg": 157
+          }
+        },
+        {
+          "time": "2025-11-09T00:00:00Z",
+          "values": {
+            "cloudCoverAvg": 45,
+            "temperatureApparentAvg": 12.5,
+            "temperatureAvg": 12.5,
+            "uvIndexAvg": 3,
+            "windSpeedAvg": 4.2,
+            "windDirectionAvg": 180
+          }
+        }
+      ]
+    }
+  })";
+
+  ForecastData data = { {}, 0, false };
+  Serial.println("Initialized forecast data structure");
+
+  // Check if forecastWeather object exists
+  if (!forecastWeather) {
+    Serial.println("ERROR: forecastWeather object is NULL!");
+    return data;
+  }
+
+  Serial.println("forecastWeather object exists, calling parseForecastJson...");
+
+  // Use the existing parsing function from WeatherForecast class
+  if (!forecastWeather->parseForecastJson(String(testForecastJson), data)) {
+    Serial.println("Failed to parse test forecast data");
+    return data;
+  }
+
+  Serial.println("Test forecast data parsed successfully");
+  Serial.println("Setting isValid to true...");
+  data.isValid = true;
+  Serial.println("=== Test forecast data loading complete ===");
+  return data;
+}
+
+// System initialization functions
+void initializeSystem() {
   Serial.begin(115200);
-  Serial.println("Weather Station Starting...");
-  Serial.println("Antenna connected - WiFi enabled");
+  Serial.println("Weather Display Starting...");
+
+  if (offlineMode) {
+    Serial.println("TEST MODE: Using local JSON data");
+  }
+  else {
+    Serial.println("LIVE MODE: Using Tomorrow.io API data");
+    Serial.println("Antenna connected - WiFi enabled");
+  }
+
   Serial.println("Touch screen to toggle display on/off");
 
-  // Initialize the display (starts dark) with touch support
+  // Initialize display and check if it worked
   Display::init();
+  Serial.println("Display initialized");
+}
 
-  // Initialize WiFi connection
+void initializeOfflineMode() {
+  realtimeWeather = new WeatherRealtime(String("test"), String("test"));
+  forecastWeather = new WeatherForecast(String("test"), String("test"));
+
+  // Get initial test weather data
+  Serial.println("Loading initial test weather data...");
+  updateWeatherData();
+
+  // Force the slideshow to start by triggering an immediate update
+  Serial.println("Starting slideshow...");
+  Display::updateSlideShow();
+
+  // Force a small delay to ensure slideshow starts
+  delay(1000);
+  Serial.println("Offline mode initialization complete");
+}
+
+bool initializeWiFiConnection() {
   Serial.println("Connecting to WiFi...");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
@@ -40,77 +247,85 @@ void setup() {
     Serial.print("Signal strength: ");
     Serial.print(WiFi.RSSI());
     Serial.println(" dBm");
+    return true;
+  }
 
-    // Initialize weather API clients
-    realtimeWeather = new WeatherRealtime(API_KEY, LOCATION);
-    forecastWeather = new WeatherForecast(API_KEY, LOCATION);
+  Serial.println();
+  Serial.println("WiFi connection failed!");
+  Serial.print("WiFi status: ");
+  Serial.println(WiFi.status());
+  Display::displayError("WiFi connection failed");
+  return false;
+}
 
-    // Get initial weather data
-    Serial.println("Fetching initial weather data...");
-    updateWeatherData();
+void initializeWeatherClients() {
+  realtimeWeather = new WeatherRealtime(API_KEY, LOCATION);
+  forecastWeather = new WeatherForecast(API_KEY, LOCATION);
+  Serial.println("Fetching initial weather data...");
+}
+
+bool isUpdateRequired() {
+  if (!offlineMode && WiFi.status() != WL_CONNECTED) {
+    return false;
+  }
+
+  unsigned long currentTime = millis();
+  return (currentTime - lastUpdate > updateInterval);
+}
+
+void fetchAndDisplayRealtime() {
+  Serial.println("=== Starting realtime weather fetch ===");
+  RealtimeWeatherData realtimeData;
+
+  if (offlineMode) {
+    Serial.println("Using test data for realtime weather...");
+    realtimeData = loadTestRealtimeData();
   }
   else {
-    Serial.println();
-    Serial.println("WiFi connection failed!");
-    Serial.print("WiFi status: ");
-    Serial.println(WiFi.status());
-
-    // Show error on display
-    Display::displayError("WiFi connection failed");
+    Serial.println("Fetching realtime weather...");
+    realtimeData = realtimeWeather->fetchWeatherData();
   }
 
-  delay(2000);
-}
+  Serial.print("Realtime data valid: ");
+  Serial.println(realtimeData.isValid ? "YES" : "NO");
 
-void loop() {
-  // Handle touch input for display toggle
-  Display::handleTouchToggle();
-
-  // Check if WiFi is connected and update weather data periodically
-  if (WiFi.status() == WL_CONNECTED) {
-    unsigned long currentTime = millis();
-    if (currentTime - lastUpdate > UPDATE_INTERVAL) {
-      Serial.println("Updating weather data...");
-      updateWeatherData();
-      lastUpdate = currentTime;
-    }
-  }
-
-  // Small delay to prevent excessive CPU usage
-  delay(100);
-}
-
-void updateWeatherData() {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi not connected - skipping weather update");
+  if (!realtimeData.isValid) {
+    Serial.println("Failed to get realtime weather data");
+    Display::displayError("Failed to get current weather");
     return;
   }
 
-  // Get realtime weather data
-  Serial.println("Fetching realtime weather...");
+  Serial.println("Realtime weather data received successfully");
+  Serial.println("Calling Display::displayRealtimeWeather...");
 
-  RealtimeWeatherData realtimeData = realtimeWeather->fetchWeatherData();
-  Display::clearScreen();
+  Display::displayRealtimeWeather(realtimeData);
+  Serial.println("=== Realtime display call completed ===");
+}
 
-  if (realtimeData.isValid) {
-    Serial.println("Realtime weather data received successfully");
-    Display::displayRealtimeWeather(realtimeData);
+void fetchAndDisplayForecast() {
+  Serial.println("=== Starting forecast weather fetch ===");
+  ForecastData forecastData;
+
+  if (offlineMode) {
+    Serial.println("Using test data for forecast...");
+    forecastData = loadTestForecastData();
   }
   else {
-    Serial.println("Failed to get realtime weather data");
-    Display::displayError("Failed to get current weather");
+    Serial.println("Fetching weather forecast...");
+    forecastData = forecastWeather->fetchForecastData();
   }
 
-  // Get forecast data
-  Serial.println("Fetching weather forecast...");
-  ForecastData forecastData = forecastWeather->fetchForecastData();
+  Serial.print("Forecast data valid: ");
+  Serial.println(forecastData.isValid ? "YES" : "NO");
 
-  if (forecastData.isValid) {
-    Serial.println("Forecast data received successfully");
-    Display::displayForecast(forecastData);
-  }
-  else {
+  if (!forecastData.isValid) {
     Serial.println("Failed to get forecast data");
     Display::displayError("Failed to get forecast");
+    return;
   }
+
+  Serial.println("Forecast data received successfully");
+  Serial.println("Calling Display::displayForecast...");
+  Display::displayForecast(forecastData);
+  Serial.println("=== Forecast display call completed ===");
 }

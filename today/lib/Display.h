@@ -91,28 +91,35 @@ private:
   static bool touchInProgress;                        // Track if touch is currently active
   static const unsigned long touchDebounceTime = 200; // 2 second debounce to prevent rapid toggling
 
+  // Slide cycling variables
+  static unsigned long lastSlideChange;
+  static int currentSlide;
+  static const unsigned long slideDuration = 4000; // 4 seconds per slide
+  static const int totalSlides = 4;
+  static RealtimeWeatherData currentWeatherData;
+
 private:
   static void drawWeatherIcon(int centerX, int centerY) {
-    // Draw a custom pixel-based weather icon (sun with cloud) 🌤️
-
     // Draw sun (yellow circle with rays)
     int sunX = centerX - 20;
     int sunY = centerY - 15;
     int sunRadius = 25;
 
-    // Sun body (filled circle)
+    // Sun body
     display.fillCircle(sunX, sunY, sunRadius, YELLOW);
 
-    // Sun rays (8 directional lines)
+    // Sun rays
     int rayLength = 15;
     int rayDistance = sunRadius + 5;
 
     // Vertical rays
     display.drawLine(sunX, sunY - rayDistance, sunX, sunY - rayDistance - rayLength, YELLOW);
     display.drawLine(sunX, sunY + rayDistance, sunX, sunY + rayDistance + rayLength, YELLOW);
+
     // Horizontal rays
     display.drawLine(sunX - rayDistance, sunY, sunX - rayDistance - rayLength, sunY, YELLOW);
     display.drawLine(sunX + rayDistance, sunY, sunX + rayDistance + rayLength, sunY, YELLOW);
+
     // Diagonal rays
     display.drawLine(sunX + 18, sunY - 18, sunX + 18 + 12, sunY - 18 - 12, YELLOW);
     display.drawLine(sunX - 18, sunY - 18, sunX - 18 - 12, sunY - 18 - 12, YELLOW);
@@ -135,6 +142,7 @@ private:
     display.fillCircle(cloudX + 15, cloudY, 18, WHITE);     // Right circle
     display.fillCircle(cloudX + 25, cloudY + 5, 15, WHITE); // Right extension
 
+    // Add text
     display.setTextSize(3);
     display.setTextColor(WHITE);
 
@@ -155,17 +163,18 @@ private:
 public:
   static void init() {
     display.begin();
-    touch.begin(); // Initialize touch interface
+    touch.begin();
     backlight.begin();
 
-    // Set display rotation for landscape mode (90 degrees)
-    display.setRotation(1); // 0=portrait, 1=landscape, 2=portrait flipped, 3=landscape flipped
+    display.setRotation(1);
     display.setTextColor(WHITE);
     display.setTextSize(2);
+    display.fillScreen(DEEP_SKY_BLUE);
+
     currentY = margin;
-    displayOn = false; // Start with display off (dark)
+    displayOn = true;
     lastTouchTime = 0;
-    touchInProgress = false; // Initialize touch state
+    touchInProgress = false;
 
     // Draw custom weather icon in center of display
     int centerX = display.width() / 2;
@@ -267,39 +276,134 @@ public:
     }
   }
 
-  static void displayRealtimeWeather(const RealtimeWeatherData& data) {
-    Serial.print("DisplayOn");
+  static void displaySlide(const String& title, const String& value, const String& unit = "") {
+    Serial.println("=== displaySlide() called ===");
+    Serial.print("displayOn: ");
     Serial.println(displayOn);
+    Serial.print("Title: ");
+    Serial.println(title);
+    Serial.print("Value: ");
+    Serial.println(value);
 
-    if (!displayOn)
-      return; // Don't display if screen is off
-
-    printLine("=== CURRENT WEATHER ===", CYAN);
-
-    if (!data.isValid) {
-      printLine("No realtime data available", RED);
+    if (!displayOn) {
+      Serial.println("Display is OFF, not showing slide");
       return;
     }
 
-    // Add weather icons alongside data
-    int iconX = display.width() - 60;
-    int iconY = currentY + 10;
+    // Clear screen with DEEP_SKY_BLUE background
+    display.fillScreen(DEEP_SKY_BLUE);
+    Serial.println("Screen filled with DEEP_SKY_BLUE");
 
-    WeatherIcons::drawThermometerIcon(display, iconX, iconY, YELLOW);
-    printLine("UV Index: " + String(data.uvIndex));
+    // Display title at top left with font size 5
+    display.setTextSize(5);
+    display.setTextColor(WHITE);
+    display.setCursor(margin, margin + 10);
+    display.print(title);
+    Serial.println("Title printed");
 
-    WeatherIcons::drawUVIcon(display, iconX, iconY + 25, YELLOW);
-    printLine("Humidity: " + String(data.humidity) + "%");
+    // Display value at bottom left with largest possible font size
+    display.setTextSize(8); // Large font for the value
+    display.setCursor(margin, display.height() - 120); // Position near bottom
+    display.print(value);
+    Serial.println("Value printed");
 
-    WeatherIcons::drawHumidityIcon(display, iconX, iconY + 50, CYAN);
-    printLine("Wind Speed: " + String(data.windSpeed) + " km/h");
+    // Add unit if provided
+    if (unit.length() > 0) {
+      display.setTextSize(4);
+      display.setCursor(margin + (value.length() * 48), display.height() - 80); // Position after value
+      display.print(unit);
+      Serial.println("Unit printed");
+    }
 
-    WeatherIcons::drawWindIcon(display, iconX, iconY + 75, WHITE);
-    printLine("Wind Direction: " + String(data.windDirection) + "°");
+    resetTextSize();
+    Serial.println("=== displaySlide() completed ===");
+  }
 
-    WeatherIcons::drawCloudIcon(display, iconX, iconY + 100, GRAY);
-    printLine("Cloud Cover: " + String(data.cloudCover) + "%");
-    printLine(""); // Empty line
+  static void updateSlideShow() {
+    Serial.print("updateSlideShow: displayOn=");
+    Serial.print(displayOn);
+    Serial.print(", data.isValid=");
+    Serial.println(currentWeatherData.isValid);
+
+    if (!displayOn || !currentWeatherData.isValid) {
+      if (!displayOn) Serial.println("Display is OFF");
+      if (!currentWeatherData.isValid) Serial.println("Weather data is INVALID");
+      return;
+    }
+
+    unsigned long currentTime = millis();
+    Serial.print("Time since last slide: ");
+    Serial.print(currentTime - lastSlideChange);
+    Serial.print(" / ");
+    Serial.println(slideDuration);
+
+    // Check if it's time to change slides
+    if (currentTime - lastSlideChange >= slideDuration) {
+      currentSlide = (currentSlide + 1) % totalSlides;
+      lastSlideChange = currentTime;
+
+      Serial.print("Switching to slide ");
+      Serial.print(currentSlide);
+      Serial.println("...");
+
+      // Display the current slide
+      switch (currentSlide) {
+      case 0: // UV Index
+        displaySlide("UV INDEX", String(currentWeatherData.uvIndex));
+        break;
+      case 1: // Humidity
+        displaySlide("HUMIDITY", String(currentWeatherData.humidity, 1), "%");
+        break;
+      case 2: // Wind Speed
+        displaySlide("WIND SPEED", String(currentWeatherData.windSpeed, 1), "km/h");
+        break;
+      case 3: // Cloud Cover
+        displaySlide("CLOUD COVER", String(currentWeatherData.cloudCover), "%");
+        break;
+      }
+
+      Serial.print("Displaying slide ");
+      Serial.print(currentSlide + 1);
+      Serial.print(" of ");
+      Serial.println(totalSlides);
+    }
+  }
+
+  static void startSlideShow(const RealtimeWeatherData& data) {
+    Serial.println("=== startSlideShow() called ===");
+    Serial.print("data.isValid: ");
+    Serial.println(data.isValid);
+    Serial.print("displayOn: ");
+    Serial.println(displayOn);
+
+    currentWeatherData = data;
+    currentSlide = 0;
+    lastSlideChange = millis();
+
+    // Display first slide immediately
+    if (data.isValid) {
+      Serial.println("Data is valid, displaying first slide...");
+      displaySlide("UV INDEX", String(data.uvIndex));
+      Serial.println("Started weather slideshow");
+    }
+    else {
+      Serial.println("Data is NOT valid, cannot start slideshow");
+    }
+  }
+
+  static void displayRealtimeWeather(const RealtimeWeatherData& data) {
+    Serial.print("DisplayOn: ");
+    Serial.println(displayOn);
+
+    if (!displayOn) return; // Don't display if screen is off
+
+    if (!data.isValid) {
+      displayError("No realtime data available");
+      return;
+    }
+
+    // Start the slideshow instead of displaying static data
+    startSlideShow(data);
   }
 
   static void displayForecast(const ForecastData& data) {
@@ -348,3 +452,8 @@ int Display::currentY = 10;
 bool Display::displayOn = false;
 unsigned long Display::lastTouchTime = 0;
 bool Display::touchInProgress = false;
+
+// Slide cycling static member definitions
+unsigned long Display::lastSlideChange = 0;
+int Display::currentSlide = 0;
+RealtimeWeatherData Display::currentWeatherData = { 0, 0, 0, 0, 0, false };
