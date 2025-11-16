@@ -9,8 +9,9 @@ WeatherRealtime* realtimeWeather;
 WeatherForecast* forecastWeather;
 
 unsigned long lastUpdate = 0;
-const unsigned long updateInterval = 8 * 60 * 1000; // 8 minutes between updates (safe for 25 req/hour limit)
+const unsigned long updateIntervalMs = 8 * 60 * 1000; // 8 minutes between updates (safe for 25 req/hour limit)
 const bool offlineMode = true;
+const int slideshowTimeMs = 4000;
 bool isLoading = true;
 
 // Function declarations
@@ -29,46 +30,47 @@ ForecastData loadTestForecastData();
 void setup() {
   initializeSystem();
 
-  // Test the display with a simple message first
-  Serial.println("Testing display with simple message...");
-  Display::displayError("Display Test - If you see this, display works!");
-  delay(3000);
+  // // Test the display with a simple message first
+  // Serial.println("Testing display with simple message...");
+  // Display::displayError("Display Test - If you see this, display works!");
+  delay(10000);
 
   if (offlineMode) {
     initializeOfflineMode();
     return;
   }
 
-  if (!initializeWiFiConnection()) {
-    delay(2000);
-    return;
-  }
+  // if (!initializeWiFiConnection()) {
+  //   delay(2000);
+  //   return;
+  // }
 
   initializeWeatherClients();
-  updateWeatherData();
 }
 
 void loop() {
   if (isLoading) {
+    Serial.println("Loading phase - waiting 5 seconds...");
     delay(5000);
     isLoading = false;
+    Serial.println("Loading complete - starting main loop");
   }
 
-  // Handle touch input for display toggle
-  Display::handleTouchToggle();
+  // // Handle touch input for display toggle
+  // Display::handleTouchToggle();
 
-  // Update slideshow if weather data is available
+  // // Update slideshow if weather data is available
   Display::updateSlideShow();
 
-  // Check if it's time to update weather data periodically
-  if (isUpdateRequired()) {
-    Serial.println("Updating weather data...");
-    updateWeatherData();
-    lastUpdate = millis();
-  }
+  // // Check if it's time to update weather data periodically
+  // if (isUpdateRequired()) {
+  //   Serial.println("Updating weather data...");
+  //   updateWeatherData();
+  //   lastUpdate = millis();
+  // }
 
-  // Small delay to prevent excessive CPU usage
-  delay(100);
+  // // Small delay to prevent excessive CPU usage
+  delay(slideshowTimeMs);
 }
 
 void updateWeatherData() {
@@ -123,7 +125,7 @@ RealtimeWeatherData loadTestRealtimeData() {
     "location": { "lat": -37.87644194695991, "lon": 145.06346130288253 }
   })";
 
-  RealtimeWeatherData data = { 0, 0, 0, 0, 0, false };
+  RealtimeWeatherData data = { 0, 0, 0, 0, 0, 0, false };
 
   // Use the existing parsing function from WeatherRealtime class
   if (!realtimeWeather || !realtimeWeather->parseRealtimeJson(String(testRealtimeJson), data)) {
@@ -192,41 +194,21 @@ ForecastData loadTestForecastData() {
   return data;
 }
 
-// System initialization functions
 void initializeSystem() {
   Serial.begin(115200);
-  Serial.println("Weather Display Starting...");
 
-  if (offlineMode) {
-    Serial.println("TEST MODE: Using local JSON data");
-  }
-  else {
-    Serial.println("LIVE MODE: Using Tomorrow.io API data");
-    Serial.println("Antenna connected - WiFi enabled");
-  }
-
-  Serial.println("Touch screen to toggle display on/off");
-
-  // Initialize display and check if it worked
   Display::init();
-  Serial.println("Display initialized");
 }
 
 void initializeOfflineMode() {
   realtimeWeather = new WeatherRealtime(String("test"), String("test"));
   forecastWeather = new WeatherForecast(String("test"), String("test"));
 
-  // Get initial test weather data
-  Serial.println("Loading initial test weather data...");
   updateWeatherData();
 
-  // Force the slideshow to start by triggering an immediate update
-  Serial.println("Starting slideshow...");
   Display::updateSlideShow();
 
-  // Force a small delay to ensure slideshow starts
   delay(1000);
-  Serial.println("Offline mode initialization complete");
 }
 
 bool initializeWiFiConnection() {
@@ -270,7 +252,7 @@ bool isUpdateRequired() {
   }
 
   unsigned long currentTime = millis();
-  return (currentTime - lastUpdate > updateInterval);
+  return (currentTime - lastUpdate > updateIntervalMs);
 }
 
 void fetchAndDisplayRealtime() {

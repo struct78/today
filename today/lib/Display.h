@@ -7,6 +7,9 @@
 #include "Arduino_GigaDisplay_GFX.h"
 #include "Arduino_GigaDisplayTouch.h"
 #include "WeatherIcons.h"
+#include "./fonts/InterBold18pt.h"
+#include "./fonts/InterMedium24pt.h"
+#include "./fonts/InterRegular12pt.h"
 
 // Color definitions for 16-bit (565) RGB
 // Basic Colors
@@ -85,7 +88,8 @@ private:
   static GigaDisplayBacklight backlight;
   static int currentY;
   static const int lineHeight = 25;
-  static const int margin = 10;
+  static const int marginY = 50;
+  static const int marginX = 40;
   static bool displayOn;
   static unsigned long lastTouchTime;
   static bool touchInProgress;                        // Track if touch is currently active
@@ -94,8 +98,8 @@ private:
   // Slide cycling variables
   static unsigned long lastSlideChange;
   static int currentSlide;
-  static const unsigned long slideDuration = 4000; // 4 seconds per slide
-  static const int totalSlides = 4;
+  static const unsigned long slideDuration = 7000;
+  static const int totalSlides = 5;
   static RealtimeWeatherData currentWeatherData;
 
 private:
@@ -162,32 +166,28 @@ private:
 
 public:
   static void init() {
+    Serial.println("=== Display::init() starting ===");
+
     display.begin();
     touch.begin();
     backlight.begin();
 
     display.setRotation(1);
-    display.setTextColor(WHITE);
-    display.setTextSize(2);
     display.fillScreen(DEEP_SKY_BLUE);
 
-    currentY = margin;
+    currentY = marginY;
     displayOn = true;
     lastTouchTime = 0;
     touchInProgress = false;
 
-    // Draw custom weather icon in center of display
-    int centerX = display.width() / 2;
-    int centerY = display.height() / 2 - 20;
-
-    drawWeatherIcon(centerX, centerY);
+    drawWeatherIcon(display.width() / 2, display.height() / 2);
   }
 
   static void setBacklight(bool on) {
     if (on) {
       // Turn on display
       backlight.set(100);
-      currentY = margin;
+      currentY = marginY;
     }
     else {
       backlight.set(0);
@@ -258,7 +258,7 @@ public:
   static void clearScreen() {
     // Always clear when explicitly called, regardless of display state
     display.fillScreen(BLACK);
-    currentY = margin;
+    currentY = marginY;
   }
 
   static void printLine(const String& text, uint16_t color = WHITE) {
@@ -266,13 +266,13 @@ public:
       return; // Don't print if display is off
 
     display.setTextColor(color);
-    display.setCursor(margin, currentY);
+    display.setCursor(marginY, currentY);
     display.print(text);
     currentY += lineHeight;
 
     // Wrap to top if we've reached the bottom
     if (currentY > display.height() - lineHeight) {
-      currentY = margin;
+      currentY = marginY;
     }
   }
 
@@ -294,37 +294,42 @@ public:
     display.fillScreen(DEEP_SKY_BLUE);
     Serial.println("Screen filled with DEEP_SKY_BLUE");
 
-    // Display title at top left with font size 5
-    display.setTextSize(5);
+    // Display title at top left with enhanced styling using Inter font
+    display.setFont(&Inter_Medium24pt7b);
     display.setTextColor(WHITE);
-    display.setCursor(margin, margin + 10);
+    display.setCursor(marginY, marginY + 40); // Adjusted Y for font baseline
     display.print(title);
-    Serial.println("Title printed");
+    Serial.println("Title printed with Inter Bold 18pt font");
 
-    // Display value at bottom left with largest possible font size
-    display.setTextSize(8); // Large font for the value
-    display.setCursor(margin, display.height() - 120); // Position near bottom
-    display.print(value);
-    Serial.println("Value printed");
+    // Display value at bottom left with largest font size using Inter font
+    display.setFont(&Inter_Medium24pt7b);
+    int valueY = display.height() - 120;
+    display.setCursor(marginY, valueY);
+    display.print(value + unit);
 
-    // Add unit if provided
-    if (unit.length() > 0) {
-      display.setTextSize(4);
-      display.setCursor(margin + (value.length() * 48), display.height() - 80); // Position after value
-      display.print(unit);
-      Serial.println("Unit printed");
-    }
+    Serial.println("Value printed with Inter Medium 24pt font");
+
+    // // Add unit if provided - aligned with value baseline
+    // if (unit.length() > 0) {
+    //   display.setTextSize(2); // Smaller unit size for better proportion with 24pt font
+    //   // Calculate actual character width for 24pt font (approximately 24 pixels per character)
+    //   int valuePixelWidth = value.length() * 24;
+    //   int unitX = marginY + valuePixelWidth + 10; // Add small gap between value and unit
+    //   int unitY = valueY - 10; // Align with value baseline (adjust for size difference)
+
+    //   display.setCursor(unitX, unitY);
+    //   display.print(unit);
+    //   // Bold effect for unit
+    //   display.setCursor(unitX + 1, unitY);
+    //   display.print(unit);
+    //   Serial.println("Unit printed with proper alignment");
+    // }
 
     resetTextSize();
     Serial.println("=== displaySlide() completed ===");
   }
 
   static void updateSlideShow() {
-    Serial.print("updateSlideShow: displayOn=");
-    Serial.print(displayOn);
-    Serial.print(", data.isValid=");
-    Serial.println(currentWeatherData.isValid);
-
     if (!displayOn || !currentWeatherData.isValid) {
       if (!displayOn) Serial.println("Display is OFF");
       if (!currentWeatherData.isValid) Serial.println("Weather data is INVALID");
@@ -332,10 +337,6 @@ public:
     }
 
     unsigned long currentTime = millis();
-    Serial.print("Time since last slide: ");
-    Serial.print(currentTime - lastSlideChange);
-    Serial.print(" / ");
-    Serial.println(slideDuration);
 
     // Check if it's time to change slides
     if (currentTime - lastSlideChange >= slideDuration) {
@@ -348,17 +349,22 @@ public:
 
       // Display the current slide
       switch (currentSlide) {
-      case 0: // UV Index
-        displaySlide("UV INDEX", String(currentWeatherData.uvIndex));
+      case 0: // Temperature
+        displaySlide("Temperature", String(currentWeatherData.temperature, 1), "°C");
         break;
-      case 1: // Humidity
-        displaySlide("HUMIDITY", String(currentWeatherData.humidity, 1), "%");
+      case 1: // UV Index
+        displaySlide("UV Index", String(currentWeatherData.uvIndex));
         break;
-      case 2: // Wind Speed
-        displaySlide("WIND SPEED", String(currentWeatherData.windSpeed, 1), "km/h");
+      case 2: // Humidity
+        displaySlide("Humidity", String(currentWeatherData.humidity, 1), "%");
         break;
-      case 3: // Cloud Cover
-        displaySlide("CLOUD COVER", String(currentWeatherData.cloudCover), "%");
+      case 3: // Wind Speed
+        displaySlide("Wind Speed", String(currentWeatherData.windSpeed, 1), "km/h");
+        break;
+      case 4: // Cloud Cover
+        displaySlide("Cloud Cover", String(currentWeatherData.cloudCover), "%");
+        break;
+      default:
         break;
       }
 
@@ -377,7 +383,7 @@ public:
     Serial.println(displayOn);
 
     currentWeatherData = data;
-    currentSlide = 0;
+    currentSlide = -1;
     lastSlideChange = millis();
 
     // Display first slide immediately

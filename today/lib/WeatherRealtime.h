@@ -5,6 +5,7 @@
 #include <ArduinoHttpClient.h>
 
 struct RealtimeWeatherData {
+  float temperature;
   float uvIndex;
   float humidity;
   float windSpeed;
@@ -25,7 +26,7 @@ public:
   }
 
   RealtimeWeatherData fetchWeatherData() {
-    RealtimeWeatherData data = { 0, 0, 0, 0, 0, false };
+    RealtimeWeatherData data = { 0, 0, 0, 0, 0, 0, false };
 
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("WiFi not connected");
@@ -60,6 +61,7 @@ public:
       // Extract the required fields from data.values
       if (doc["data"]["values"]) {
         JsonObject values = doc["data"]["values"];
+        data.temperature = values["temperature"] | 0.0f;
         data.uvIndex = values["uvIndex"] | 0.0f;
         data.humidity = values["humidity"] | 0.0f;
         data.windSpeed = values["windSpeed"] | 0.0f;
@@ -89,6 +91,7 @@ public:
 
     if (doc["data"]["values"]) {
       JsonObject values = doc["data"]["values"];
+      data.temperature = values["temperature"] | 0.0f;
       data.uvIndex = values["uvIndex"] | 0.0f;
       data.humidity = values["humidity"] | 0.0f;
       data.windSpeed = values["windSpeed"] | 0.0f;
