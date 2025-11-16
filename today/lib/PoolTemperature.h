@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include "Logger.h"
 #include "HttpClient.h"
+#include "TimeManager.h"
 
 struct PoolTemperatureData {
   String id;
@@ -16,15 +17,19 @@ struct PoolTemperatureData {
 class PoolTemperature {
 private:
   SimpleHttpClient httpClient;
+  TimeManager* timeManager;
 
 public:
-  PoolTemperature() {
+  PoolTemperature(TimeManager* timeManager) : timeManager(timeManager) {
   }
 
   PoolTemperatureData fetchPoolData() {
+    Logger::log("=== Starting pool temperature fetch ===");
     PoolTemperatureData data = { "", 0.0f, 0, "", false };
 
+    Logger::log("Making HTTP request to pool API...");
     HttpResponse response = httpClient.get("api.canwegointhepool.com", "/app/read");
+    Logger::log("HTTP request completed");
 
     if (!response.isSuccess) {
       Logger::log("Failed to fetch pool data: " + response.error);
@@ -34,8 +39,11 @@ public:
     Logger::log("Pool API response: " + response.body);
 
     if (parsePoolJson(response.body, data)) {
-      data.timeAgo = formatTimeAgo(data.timestamp);
+      data.timeAgo = timeManager->formatTimeAgo(data.timestamp);
       data.isValid = true;
+      Logger::log("Pool data parsed successfully");
+    } else {
+      Logger::log("Failed to parse pool data");
     }
 
     return data;
@@ -61,59 +69,7 @@ public:
     return false;
   }
 
-  String formatTimeAgo(unsigned long timestamp) {
-    if (timestamp == 0) {
-      return "unknown";
-    }
-
-    // Get current time in seconds (timestamp appears to be in milliseconds)
-    unsigned long currentTime = millis();
-
-    // Convert timestamp from milliseconds to seconds for calculation
-    unsigned long timestampSeconds = timestamp / 1000;
-    unsigned long currentTimeSeconds = currentTime / 1000;
-
-    // Calculate difference in seconds
-    unsigned long diffSeconds;
-    if (currentTimeSeconds > timestampSeconds) {
-      diffSeconds = currentTimeSeconds - timestampSeconds;
-    }
-    else {
-      // Handle case where timestamp is in the future or very recent
-      diffSeconds = 0;
-    }
-
-    // Convert to more meaningful units
-    if (diffSeconds < 60) {
-      return String(diffSeconds) + " seconds ago";
-    }
-    else if (diffSeconds < 3600) { // Less than 1 hour
-      unsigned long minutes = diffSeconds / 60;
-      return String(minutes) + " minutes ago";
-    }
-    else if (diffSeconds < 86400) { // Less than 1 day
-      unsigned long hours = diffSeconds / 3600;
-      unsigned long minutes = (diffSeconds % 3600) / 60;
-
-      if (minutes == 0) {
-        return String(hours) + " hours ago";
-      }
-      else {
-        return String(hours) + " hours " + String(minutes) + " minutes ago";
-      }
-    }
-    else { // 1 day or more
-      unsigned long days = diffSeconds / 86400;
-      unsigned long hours = (diffSeconds % 86400) / 3600;
-
-      if (hours == 0) {
-        return String(days) + " days ago";
-      }
-      else {
-        return String(days) + " days " + String(hours) + " hours ago";
-      }
-    }
-  }
+public:
 
   // Load test data for offline mode
   PoolTemperatureData loadTestData() {
