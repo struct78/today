@@ -200,4 +200,4 @@ WiFiUDP TimeManager::udp;
 unsigned long TimeManager::ntpSyncTime = 0;
 unsigned long TimeManager::ntpSyncMillis = 0;
 bool TimeManager::timeIsSynced = false;
-const char* TimeManager::ntpServer = "pool.ntp.org";
+const char* TimeManager::ntpServer = "au.pool.ntp.org";
