@@ -1,17 +1,20 @@
 # Today
 
-Today is a touch-enabled Arduino display that uses Tomorrow.io APIs to fetch and display real-time weather and forecast data on the Arduino Giga's built-in display with full HTTPS support.
+Today is a touch-enabled Arduino display that integrates multiple APIs to show real-time weather data, forecasts, and pool temperature on the Arduino Giga's built-in display with full HTTPS support.
 
 ## Features
 
 - 🌤️ **Real-time Weather Data**: Current conditions with custom pixel-art weather icons
+- 🏊 **Pool Temperature**: Swimming pool temperature monitoring with custom emoji display  
 - 📱 **Touch Interface**: Touch-to-wake display with power management
 - 🔐 **Secure HTTPS**: Full SSL/TLS encryption for API communications
 - 🎨 **Custom Graphics**: Hand-drawn weather icons with light grey cloud outlines
 - 🌈 **Rich Color Palette**: 57 predefined 16-bit RGB colors for beautiful displays
 - 📊 **7-Day Forecast**: Extended weather outlook
-- 🔄 **Auto-Updates**: Fresh data every 5 minutes
+- ⏰ **NTP Time Sync**: Network Time Protocol for accurate timestamps
+- 🔄 **Auto-Updates**: Fresh data every 8 minutes with rate limiting
 - 🖥️ **Landscape Display**: Optimized for flat/horizontal viewing
+- 🔧 **Modular Architecture**: Clean separation of concerns with reusable components
 
 ## Hardware Requirements
 
@@ -69,11 +72,33 @@ The display features a sophisticated touch-enabled interface system:
 
 ## Technical Architecture
 
+### Multi-API Integration
+
+- **Weather API**: Tomorrow.io for real-time conditions and 7-day forecasts
+- **Pool API**: Custom pool temperature monitoring with 🏊 emoji display
+- **NTP Protocol**: Network Time Protocol for accurate time synchronization
+- **Unified HTTP Client**: Shared HTTPS client with SSL support and manual fallback
+
+### Advanced Time Management
+
+- **NTP Synchronization**: Automatic time sync with network time servers
+- **Unix Timestamp Handling**: Precise time calculations and formatting
+- **Smart Resync Logic**: Periodic time synchronization to maintain accuracy
+- **Time Display**: Human-readable "time ago" formatting (e.g., "2 minutes ago")
+
 ### HTTPS Security
 
-- **WiFiSSLClient**: Secure SSL/TLS connections to Tomorrow.io API
-- **Certificate Validation**: Automatic certificate chain verification
-- **Encrypted Communication**: All weather data fetched over HTTPS (port 443)
+- **WiFiSSLClient**: Secure SSL/TLS connections with `connectSSL()` method
+- **Certificate Validation**: Automatic certificate chain verification  
+- **Encrypted Communication**: All API data fetched over HTTPS (port 443)
+- **Manual HTTP Fallback**: Custom HTTP implementation for compatibility issues
+
+### Slideshow System
+
+- **Multi-Screen Display**: Weather, forecast, and pool temperature screens
+- **8-Minute Update Cycle**: Coordinated updates respecting API rate limits
+- **Touch Navigation**: Touch to cycle through different data displays
+- **Power Management**: Touch-to-wake with automatic display sleep
 
 ### Touch System
 
@@ -85,30 +110,50 @@ The display features a sophisticated touch-enabled interface system:
 ### Weather Data Processing
 
 - **JSON Parsing**: ArduinoJson library with 8KB buffer for forecast data
-- **Data Structures**: Organized structs for realtime and forecast data
+- **Data Structures**: Organized structs for realtime, forecast, and pool data
 - **Error Handling**: Comprehensive HTTP status code and parsing error management
 - **Memory Management**: Efficient memory usage with static allocations
+- **Multi-Source Integration**: Weather, pool, and time data coordination
 
 ### File Structure
 
 ```
 today/
-├── README.md              # This file
-├── scripts/               # Deployment and build scripts
-│   ├── README.md         # Deployment documentation
-│   ├── deploy.sh         # Auto-deployment with library detection
-│   └── build.sh          # Build script
-├── today/                # Arduino project folder
-│   ├── today.ino         # Main sketch with WiFi and touch handling
-│   ├── credentials.h     # WiFi/API credentials (Melbourne, Australia location)
-│   ├── today_test.ino.txt # Unit tests
-│   ├── arduino.json      # Arduino CLI configuration
-│   ├── .vscode/          # VS Code IntelliSense setup
-│   └── lib/
-│       ├── WeatherRealtime.h  # HTTPS realtime weather API client
-│       ├── WeatherForecast.h  # HTTPS forecast API client
-│       ├── WeatherIcons.h     # Custom pixel-art weather icons
-│       └── Display.h          # Touch-enabled display with 57 colors
+├── README.md                     # Project documentation
+├── .github/                      # GitHub configuration and documentation
+│   └── copilot-instructions.md   # AI coding guidelines and patterns
+├── scripts/                      # Build and deployment automation
+│   ├── README.md                 # Deployment documentation  
+│   ├── build.sh                  # Build script with library detection
+│   ├── deploy.sh                 # Auto-deployment with device detection
+│   └── convert-fonts.sh          # Font conversion utilities
+├── examples/                     # Sample API responses
+│   ├── forecast.json             # Example weather forecast data
+│   └── realtime.json             # Example real-time weather data
+├── fonts/                        # Font assets and conversion tools
+│   ├── Inter.ttc                 # Inter font family
+│   ├── ModernFonts.h            # Font definitions
+│   └── extras/                   # Additional font formats
+└── today/                        # Main Arduino project
+    ├── today.ino                 # Main sketch with slideshow logic
+    ├── credentials.h             # WiFi/API credentials (Melbourne, Australia)
+    ├── credentials.example.h     # Credentials template
+    ├── arduino.json              # Arduino CLI configuration
+    ├── monitor.sh                # Serial monitoring script
+    ├── .vscode/                  # VS Code IntelliSense configuration
+    └── lib/                      # Project libraries and components
+        ├── Display.h             # Touch-enabled display with 57 colors
+        ├── HttpClient.h          # Unified HTTPS client with SSL support
+        ├── Logger.h              # Debug logging utilities
+        ├── PoolTemperature.h     # Pool API integration with emoji display
+        ├── TimeManager.h         # NTP time synchronization and formatting
+        ├── WeatherRealtime.h     # Real-time weather API client
+        ├── WeatherForecast.h     # 7-day forecast API client
+        ├── WeatherIcons.h        # Custom pixel-art weather icons
+        └── fonts/                # Converted font headers
+            ├── InterRegular12pt.h    # Small text font
+            ├── InterMedium24pt.h     # Medium display font
+            └── InterBold18pt.h       # Bold accent font
 ```
 
 ## Quick Start (Recommended)
@@ -165,14 +210,16 @@ Shows all available options and guides you through deployment.
 ## Current Status
 
 ✅ **WiFi Connected**: Successfully connects with strong signal strength  
-✅ **HTTPS Working**: Secure SSL connections to Tomorrow.io API  
+✅ **HTTPS Working**: Secure SSL connections to weather and pool APIs  
 ✅ **Weather Data**: Real-time and 7-day forecast data retrieval  
+✅ **Pool Temperature**: Swimming pool monitoring with emoji display
+✅ **NTP Time Sync**: Accurate network time synchronization
 ✅ **Touch Interface**: Responsive touch-to-wake functionality  
 ✅ **Display Graphics**: Custom weather icons with landscape orientation  
-✅ **Auto-Updates**: 5-minute refresh cycle operational
+✅ **Auto-Updates**: 8-minute refresh cycle operational with multi-API coordination
 
-**Sketch Size**: ~468KB (23% of Arduino Giga flash memory)  
-**RAM Usage**: ~69KB (13% of available memory)
+**Sketch Size**: ~500KB (25% of Arduino Giga flash memory)  
+**RAM Usage**: ~70KB (13% of available memory)
 
 ## VS Code IntelliSense Configuration
 
@@ -201,26 +248,54 @@ After opening the project in VS Code, the include statements should resolve auto
 - **Time Data**: Sunrise/sunset times, moon phases
 - **Extremes**: Daily min/max values for all metrics
 
+### Pool Temperature Data:
+
+- **Real-time Monitoring**: Current pool temperature in Celsius
+- **Visual Display**: Swimming emoji (🏊) with temperature reading
+- **Time Tracking**: Last update timestamp with NTP synchronization
+- **API Integration**: Secure HTTPS connection to pool monitoring service
+
 ### Security & Rate Limiting:
 
 - **HTTPS Only**: All API calls use SSL/TLS encryption
-- **API Authentication**: Secure API key transmission
-- **Rate Limiting**: 5-minute update intervals (300 seconds)
-- **Error Handling**: Network timeout and retry logic
+- **API Authentication**: Secure API key transmission for weather data
+- **Rate Limiting**: 8-minute update intervals (480 seconds) for API protection
+- **Error Handling**: Network timeout, retry logic, and connection fallbacks
 
 ## Deployment Scripts
 
 - **scripts/deploy.sh**: Auto-detects Arduino, installs libraries, compiles, uploads
-- **scripts/build.sh**: Simple compilation script
+- **scripts/build.sh**: Compilation script with comprehensive library detection
+- **scripts/convert-fonts.sh**: Font conversion utilities for custom typefaces
 - **scripts/README.md**: Detailed deployment documentation
-- **today/arduino.json**: Arduino CLI project configuration## Testing
+- **today/monitor.sh**: Serial monitor helper script
+- **today/arduino.json**: Arduino CLI project configuration
 
-To run tests:
+## Development Features
 
-1. Rename `today_test.ino.txt` to `today_test.ino`
-2. Upload and run tests via Serial Monitor
-3. Rename back to avoid conflicts when running main sketch
+### Code Quality
+
+- **GitHub Copilot Integration**: AI coding guidelines in `.github/copilot-instructions.md`
+- **Early Return Patterns**: Clean, readable code with guard clauses
+- **Modular Architecture**: Separated concerns with reusable components
+- **Comprehensive Logging**: Debug output via `Logger.h` utilities
+- **Error Handling**: Robust error management with graceful fallbacks
+
+### Font System
+
+- **Inter Font Family**: Modern, readable typography
+- **Multiple Weights**: Regular, Medium, and Bold variants
+- **Size Options**: 12pt, 18pt, and 24pt for different UI elements
+- **Conversion Tools**: Scripts for generating Arduino-compatible font headers
+
+### Example API Data
+
+The project includes sample API responses in the `examples/` directory:
+- **forecast.json**: Example 7-day weather forecast data structure
+- **realtime.json**: Example real-time weather data structure
+
+These examples help understand the data format and can be used for offline development and testing.
 
 ## Update Frequency
 
-The sketch fetches new data every 5 minutes to respect API rate limits.
+The sketch fetches new data every 8 minutes to respect API rate limits and coordinate multiple data sources efficiently.
