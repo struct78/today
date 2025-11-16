@@ -1,3 +1,4 @@
 # Ignore credentials file
 credentials.h
 .DS_Store
+fonts
