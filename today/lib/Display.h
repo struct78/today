@@ -160,7 +160,125 @@ private:
     resetTextSize();
   }
 
+  // Icon drawing functions for different weather parameters
+  static void drawTemperatureIcon(int centerX, int centerY) {
+    // Draw a thermometer (doubled size)
+    int thermX = centerX;
+    int thermY = centerY;
+
+    // Thermometer bulb (circle at bottom) - doubled radius
+    display.fillCircle(thermX, thermY + 40, 16, RED);
+
+    // Thermometer stem (rectangle) - doubled dimensions
+    display.fillRect(thermX - 6, thermY - 40, 12, 80, WHITE);
+    display.drawRect(thermX - 6, thermY - 40, 12, 80, GRAY);
+
+    // Temperature markings - doubled spacing and length
+    for (int i = 0; i < 4; i++) {
+      int markY = thermY - 30 + (i * 16);
+      display.drawLine(thermX + 6, markY, thermX + 16, markY, GRAY);
+    }
+  }
+
+  static void drawHumidityIcon(int centerX, int centerY) {
+    // Draw a water droplet (doubled size)
+    int dropX = centerX;
+    int dropY = centerY;
+
+    // Water droplet shape using circles and triangle approximation - doubled radius
+    display.fillCircle(dropX, dropY + 10, 24, BLUE);
+    display.fillTriangle(dropX, dropY - 20, dropX - 16, dropY + 10, dropX + 16, dropY + 10, BLUE);
+
+    // Highlight for shine effect - doubled radius
+    display.fillCircle(dropX - 8, dropY, 6, LIGHT_BLUE);
+  }
+
+  static void drawWindIcon(int centerX, int centerY) {
+    // Draw wind lines (doubled size)
+    int windX = centerX;
+    int windY = centerY;
+
+    // Multiple curved wind lines - doubled dimensions
+    for (int i = 0; i < 3; i++) {
+      int lineY = windY - 20 + (i * 16);
+      // Horizontal lines with slight curves - doubled length
+      display.drawLine(windX - 30, lineY, windX + 20, lineY, WHITE);
+      display.drawLine(windX + 20, lineY, windX + 30, lineY - 4, WHITE);
+      display.drawLine(windX + 30, lineY - 4, windX + 24, lineY - 10, WHITE);
+    }
+  }
+
+  static void drawCloudIcon(int centerX, int centerY) {
+    // Draw a cloud (doubled size)
+    int cloudX = centerX;
+    int cloudY = centerY;
+
+    // Cloud circles (create puffy cloud shape) - doubled radius
+    display.fillCircle(cloudX - 24, cloudY, 30, WHITE);
+    display.fillCircle(cloudX, cloudY - 16, 36, WHITE);
+    display.fillCircle(cloudX + 24, cloudY, 30, WHITE);
+    display.fillCircle(cloudX + 40, cloudY + 10, 24, WHITE);
+
+    // Outline for definition - doubled radius
+    display.drawCircle(cloudX - 24, cloudY, 30, LIGHT_GRAY);
+    display.drawCircle(cloudX, cloudY - 16, 36, LIGHT_GRAY);
+    display.drawCircle(cloudX + 24, cloudY, 30, LIGHT_GRAY);
+    display.drawCircle(cloudX + 40, cloudY + 10, 24, LIGHT_GRAY);
+  }
+
+  static void drawUVIcon(int centerX, int centerY) {
+    // Draw a sun with UV rays (doubled size)
+    int sunX = centerX;
+    int sunY = centerY;
+
+    // Sun body - doubled radius
+    display.fillCircle(sunX, sunY, 30, YELLOW);
+
+    // Sun rays (longer and more prominent for UV) - doubled length
+    int rayLength = 40;
+    int rayDistance = 36;
+
+    // 8 rays in all directions
+    for (int i = 0; i < 8; i++) {
+      float angle = i * 45.0 * PI / 180.0;
+      int startX = sunX + cos(angle) * rayDistance;
+      int startY = sunY + sin(angle) * rayDistance;
+      int endX = sunX + cos(angle) * (rayDistance + rayLength);
+      int endY = sunY + sin(angle) * (rayDistance + rayLength);
+
+      display.drawLine(startX, startY, endX, endY, ORANGE);
+      display.drawLine(startX, startY + 1, endX, endY + 1, ORANGE); // Thicker lines
+    }
+  }
+
 private:
+  // Function to get background color based on weather parameter and value
+  static uint16_t getBackgroundColor(const String& paramType, float value) {
+    if (paramType == "temperature") {
+      if (value >= 30) return RED_ORANGE;          // Hot - orange/red
+      else if (value >= 20) return FOREST_GREEN;   // Warm - green
+      else if (value >= 15) return DEEP_SKY_BLUE;  // Cool - blue
+      else return DARK_BLUE;                       // Cold - dark blue
+    }
+    else if (paramType == "uv") {
+      if (value >= 8) return RED;                  // Very high UV - red
+      else if (value >= 6) return ORANGE;          // High UV - orange
+      else if (value >= 3) return YELLOW;          // Moderate UV - yellow
+      else return DARK_SEA_GREEN;                     // Low UV - light green
+    }
+    else if (paramType == "humidity") {
+      return NAVY_BLUE;                            // Static blue for humidity
+    }
+    else if (paramType == "wind") {
+      return STORM_GRAY;                           // Gray for wind
+    }
+    else if (paramType == "cloud") {
+      return CLOUD_GRAY;                           // Gray for cloud cover
+    }
+
+    return DEEP_SKY_BLUE; // Default background
+  }
+
   static void resetTextSize() {
     display.setTextSize(2);
   }
@@ -273,7 +391,7 @@ public:
     }
   }
 
-  static void displaySlide(const String& title, const String& value, const String& unit = "") {
+  static void displaySlide(const String& title, const String& value, const String& unit = "", const String& iconType = "") {
     Logger::log("=== displaySlide() called ===");
     Logger::log("displayOn: ", displayOn);
     Logger::log("Title: ", title);
@@ -284,14 +402,58 @@ public:
       return;
     }
 
-    // Clear screen with DEEP_SKY_BLUE background
-    display.fillScreen(DEEP_SKY_BLUE);
+    // Determine background color based on parameter type and value
+    uint16_t backgroundColor = DEEP_SKY_BLUE; // Default
+    if (iconType.length() > 0) {
+      float numericValue = value.toFloat();
+
+      if (iconType == "temperature") {
+        backgroundColor = getBackgroundColor("temperature", numericValue);
+      }
+      else if (iconType == "uv") {
+        backgroundColor = getBackgroundColor("uv", numericValue);
+      }
+      else if (iconType == "humidity") {
+        backgroundColor = getBackgroundColor("humidity", numericValue);
+      }
+      else if (iconType == "wind") {
+        backgroundColor = getBackgroundColor("wind", numericValue);
+      }
+      else if (iconType == "cloud") {
+        backgroundColor = getBackgroundColor("cloud", numericValue);
+      }
+    }
+
+    // Clear screen with dynamic background color
+    display.fillScreen(backgroundColor);
 
     // Display title at top left with enhanced styling using Inter font
     display.setFont(&Inter_Regular12pt7b);
     display.setTextColor(WHITE);
     display.setCursor(marginX, marginY + 20);
     display.print(title.c_str());
+
+    // Display icon in center if specified
+    if (iconType.length() > 0) {
+      int centerX = display.width() / 2;
+      int centerY = display.height() / 2;
+
+      if (iconType == "temperature") {
+        drawTemperatureIcon(centerX, centerY);
+      }
+      else if (iconType == "humidity") {
+        drawHumidityIcon(centerX, centerY);
+      }
+      else if (iconType == "wind") {
+        drawWindIcon(centerX, centerY);
+      }
+      else if (iconType == "cloud") {
+        drawCloudIcon(centerX, centerY);
+      }
+      else if (iconType == "uv") {
+        drawUVIcon(centerX, centerY);
+      }
+    }
 
     // Display value at bottom left with largest font size using Inter font
     display.setFont(&Inter_Medium24pt7b);
@@ -319,22 +481,22 @@ public:
 
       Logger::log("Switching to slide " + String(currentSlide) + "...");
 
-      // Display the current slide
+      // Display the current slide with appropriate icons
       switch (currentSlide) {
       case 0: // Temperature
-        displaySlide("Temperature", String(currentWeatherData.temperature, 1));
+        displaySlide("Temperature", String(currentWeatherData.temperature, 1), "C", "temperature");
         break;
       case 1: // UV Index
-        displaySlide("UV index", String(currentWeatherData.uvIndex));
+        displaySlide("UV index", String(currentWeatherData.uvIndex), "", "uv");
         break;
       case 2: // Humidity
-        displaySlide("Humidity", String(currentWeatherData.humidity, 1), "%");
+        displaySlide("Humidity", String(currentWeatherData.humidity, 1), "%", "humidity");
         break;
       case 3: // Wind Speed
-        displaySlide("Wind speed", String(currentWeatherData.windSpeed, 1), "km/h");
+        displaySlide("Wind speed", String(currentWeatherData.windSpeed, 1), "km/h", "wind");
         break;
       case 4: // Cloud Cover
-        displaySlide("Cloud cover", String(currentWeatherData.cloudCover), "%");
+        displaySlide("Cloud cover", String(currentWeatherData.cloudCover), "%", "cloud");
         break;
       default:
         break;
