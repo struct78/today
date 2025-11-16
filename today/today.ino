@@ -88,7 +88,9 @@ void updateWeatherData() {
 
   // Don't clear screen here as slideshow will handle display
   fetchAndDisplayRealtime();
+  delay(10);
   fetchAndDisplayPoolTemp();
+  delay(10);
   // Remove forecast for now to focus on slideshow
   // fetchAndDisplayForecast();
 }
