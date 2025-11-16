@@ -2,7 +2,7 @@
 #pragma once
 #include <ArduinoJson.h>
 #include <WiFi.h>
-#include <ArduinoHttpClient.h>
+#include "HttpClient.h"
 
 struct DailyForecastData {
   String date;
@@ -26,7 +26,7 @@ class WeatherForecast {
 private:
   String apiKey;
   String location;
-  WiFiSSLClient wifiSSLClient;
+  SimpleHttpClient httpClient;
 
 public:
   WeatherForecast(const String& key, const String& loc)
@@ -36,38 +36,20 @@ public:
   ForecastData fetchForecastData() {
     ForecastData data = { {}, 0, false };
 
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("WiFi not connected");
+    String queryParams = "location=" + location + "&apikey=" + apiKey + "&timesteps=1d";
+    HttpResponse response = httpClient.get("api.tomorrow.io", "/v4/weather/forecast", queryParams);
+
+    if (!response.isSuccess) {
+      Serial.println("Failed to fetch forecast data: " + response.error);
       return data;
     }
 
-    // Create HTTPS client for Arduino Giga
-    HttpClient http = HttpClient(wifiSSLClient, "api.tomorrow.io", 443);
+    Serial.println(response.body);
 
-    String path = "/v4/weather/forecast?location=" + location + "&apikey=" + apiKey + "&timesteps=1d";
-
-    http.beginRequest();
-    http.get(path);
-    http.sendHeader("accept", "application/json");
-    http.endRequest();
-
-    int statusCode = http.responseStatusCode();
-
-    if (statusCode == 200) {
-      String payload = http.responseBody();
-
-      Serial.println(payload);
-
-      if (parseForecastJson(payload, data)) {
-        data.isValid = true;
-      }
-    }
-    else {
-      Serial.print("HTTP error: ");
-      Serial.println(statusCode);
+    if (parseForecastJson(response.body, data)) {
+      data.isValid = true;
     }
 
-    http.stop();
     return data;
   }
 

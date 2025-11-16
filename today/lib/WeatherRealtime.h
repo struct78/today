@@ -2,8 +2,8 @@
 #pragma once
 #include <ArduinoJson.h>
 #include <WiFi.h>
-#include <ArduinoHttpClient.h>
 #include "Logger.h"
+#include "HttpClient.h"
 
 struct RealtimeWeatherData {
   float temperature;
@@ -19,7 +19,7 @@ class WeatherRealtime {
 private:
   String apiKey;
   String location;
-  WiFiSSLClient wifiSSLClient;
+  SimpleHttpClient httpClient;
 
 public:
   WeatherRealtime(const String& key, const String& loc)
@@ -29,55 +29,20 @@ public:
   RealtimeWeatherData fetchWeatherData() {
     RealtimeWeatherData data = { 0, 0, 0, 0, 0, 0, false };
 
-    if (WiFi.status() != WL_CONNECTED) {
-      Logger::log("WiFi not connected");
+    String queryParams = "location=" + location + "&apikey=" + apiKey;
+    HttpResponse response = httpClient.get("api.tomorrow.io", "/v4/weather/realtime", queryParams);
+
+    if (!response.isSuccess) {
+      Logger::log("Failed to fetch weather data: " + response.error);
       return data;
     }
 
-    // Create HTTPS client for Arduino Giga
-    HttpClient http = HttpClient(wifiSSLClient, "api.tomorrow.io", 443);
-
-    String path = "/v4/weather/realtime?location=" + location + "&apikey=" + apiKey;
-
-    Logger::log(path);
-
-    http.beginRequest();
-    http.get(path);
-    http.sendHeader("accept", "application/json");
-    http.endRequest();
-
-    int statusCode = http.responseStatusCode();
-
-    if (statusCode == 200) {
-      String payload = http.responseBody();
-      DynamicJsonDocument doc(2048);
-
-      DeserializationError error = deserializeJson(doc, payload);
-      if (error) {
-        Logger::log("JSON parsing failed");
-        http.stop();
-        return data;
-      }
-
-      // Extract the required fields from data.values
-      if (doc["data"]["values"]) {
-        JsonObject values = doc["data"]["values"];
-        data.temperature = values["temperature"] | 0.0f;
-        data.uvIndex = values["uvIndex"] | 0.0f;
-        data.humidity = values["humidity"] | 0.0f;
-        data.windSpeed = values["windSpeed"] | 0.0f;
-        data.windDirection = values["windDirection"] | 0.0f;
-        data.cloudCover = values["cloudCover"] | 0.0f;
-        data.isValid = true;
-      }
-    }
-    else {
-      String payload = http.responseBody();
-      Logger::log(payload);
-      Logger::log("HTTP error: ", statusCode);
+    if (!parseRealtimeJson(response.body, data)) {
+      Logger::log("Failed to parse weather data");
+      return data;
     }
 
-    http.stop();
+    data.isValid = true;
     return data;
   }
 

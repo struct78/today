@@ -4,10 +4,12 @@
 #include "lib/Logger.h"
 #include "lib/WeatherRealtime.h"
 #include "lib/WeatherForecast.h"
+#include "lib/PoolTemperature.h"
 #include "lib/Display.h"
 
 WeatherRealtime* realtimeWeather;
 WeatherForecast* forecastWeather;
+PoolTemperature* poolTemperature;
 
 unsigned long lastUpdate = 0;
 const unsigned long updateIntervalMs = 8 * 60 * 1000; // 8 minutes between updates (safe for 25 req/hour limit)
@@ -21,6 +23,7 @@ bool isUpdateRequired();
 void clearScreen();
 void fetchAndDisplayForecast();
 void fetchAndDisplayRealtime();
+void fetchAndDisplayPoolTemp();
 void initializeOfflineMode();
 void initializeSystem();
 void initializeWeatherClients();
@@ -78,6 +81,7 @@ void updateWeatherData() {
 
   // Don't clear screen here as slideshow will handle display
   fetchAndDisplayRealtime();
+  fetchAndDisplayPoolTemp();
   // Remove forecast for now to focus on slideshow
   // fetchAndDisplayForecast();
 }
@@ -200,6 +204,7 @@ void initializeSystem() {
 void initializeOfflineMode() {
   realtimeWeather = new WeatherRealtime(String("test"), String("test"));
   forecastWeather = new WeatherForecast(String("test"), String("test"));
+  poolTemperature = new PoolTemperature();
 
   updateWeatherData();
 
@@ -236,6 +241,7 @@ bool initializeWiFiConnection() {
 void initializeWeatherClients() {
   realtimeWeather = new WeatherRealtime(API_KEY, LOCATION);
   forecastWeather = new WeatherForecast(API_KEY, LOCATION);
+  poolTemperature = new PoolTemperature();
   Logger::log("Fetching initial weather data...");
   updateWeatherData();
 }
@@ -275,6 +281,34 @@ void fetchAndDisplayRealtime() {
 
   Display::displayRealtimeWeather(realtimeData);
   Logger::log("=== Realtime display call completed ===");
+}
+
+void fetchAndDisplayPoolTemp() {
+  Logger::log("=== Starting pool temperature fetch ===");
+  PoolTemperatureData poolData;
+
+  if (offlineMode) {
+    Logger::log("Using test data for pool temperature...");
+    poolData = poolTemperature->loadTestData();
+  }
+  else {
+    Logger::log("Fetching pool temperature...");
+    poolData = poolTemperature->fetchPoolData();
+  }
+
+  Logger::log("Pool data valid: ", poolData.isValid);
+
+  if (poolData.isValid) {
+    Logger::log("Pool temperature: " + String(poolData.temperature) + "C");
+    Logger::log("Time ago: " + poolData.timeAgo);
+  }
+  else {
+    Logger::log("Failed to get pool temperature data");
+  }
+
+  // Update display with pool data (whether valid or not)
+  Display::updatePoolData(poolData);
+  Logger::log("=== Pool temperature fetch completed ===");
 }
 
 void fetchAndDisplayForecast() {

@@ -4,6 +4,7 @@
 #include "Logger.h"
 #include "WeatherRealtime.h"
 #include "WeatherForecast.h"
+#include "PoolTemperature.h"
 #include <Arduino_GigaDisplay.h>
 #include "Arduino_GigaDisplay_GFX.h"
 #include "Arduino_GigaDisplayTouch.h"
@@ -78,8 +79,14 @@
 #define DEEP_SKY_BLUE 0x3C9F
 #define CLOUD_GRAY 0x39E7
 #define SUN_YELLOW 0xFEA0
+#define STORM_GRAY 0x4208
+
+// Pool/Water Colors
+#define TURQUOISE 0x4F9B
+#define TEAL 0x2B5A
+#define STEEL_BLUE 0x4C9F
+#define DARK_SLATE_BLUE 0x2B75
 #define WARM_ORANGE 0xFD00
-#define STORM_GRAY 0x2589
 #define FOG_GRAY 0x8C51
 
 class Display {
@@ -100,8 +107,9 @@ private:
   static unsigned long lastSlideChange;
   static int currentSlide;
   static const unsigned long slideDuration = 7000;
-  static const int totalSlides = 5;
+  static const int totalSlides = 6;
   static RealtimeWeatherData currentWeatherData;
+  static PoolTemperatureData currentPoolData;
 
 private:
   static void drawWeatherIcon(int centerX, int centerY) {
@@ -252,6 +260,50 @@ private:
     }
   }
 
+  static void drawSwimmingIcon(int centerX, int centerY) {
+    // Draw swimming person icon (🏊‍♂️ emoji representation)
+    int swimmerX = centerX;
+    int swimmerY = centerY;
+
+    // Draw water waves at bottom (tripled size)
+    int waveY = swimmerY + 40;
+    for (int i = 0; i < 3; i++) {
+      int waveBaseY = waveY + (i * 12);
+      // Wavy lines using multiple short segments
+      for (int x = -90; x <= 90; x += 15) {
+        int y1 = waveBaseY + (int)(6 * sin(x * 0.1));
+        int y2 = waveBaseY + (int)(6 * sin((x + 15) * 0.1));
+        display.drawLine(swimmerX + x, y1, swimmerX + x + 15, y2, CYAN);
+        display.drawLine(swimmerX + x, y1 + 1, swimmerX + x + 15, y2 + 1, CYAN);
+      }
+    }
+
+    // Draw swimmer's head (circle) - tripled radius
+    display.fillCircle(swimmerX + 30, swimmerY - 30, 18, WHITE);
+    display.drawCircle(swimmerX + 30, swimmerY - 30, 18, GRAY);
+
+    // Draw swimmer's body (oval/rectangle) - tripled dimensions
+    display.fillRect(swimmerX - 15, swimmerY - 12, 45, 24, WHITE);
+    display.drawRect(swimmerX - 15, swimmerY - 12, 45, 24, GRAY);
+
+    // Draw extended arm (swimming stroke) - tripled length
+    display.drawLine(swimmerX - 15, swimmerY - 6, swimmerX - 60, swimmerY - 24, WHITE);
+    display.drawLine(swimmerX - 15, swimmerY - 6, swimmerX - 60, swimmerY - 21, WHITE);
+    display.drawLine(swimmerX - 15, swimmerY - 6, swimmerX - 60, swimmerY - 18, WHITE);
+
+    // Hand
+    display.fillCircle(swimmerX - 60, swimmerY - 21, 6, WHITE);
+
+    // Draw legs (kicking) - tripled length
+    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 60, swimmerY - 6, WHITE);
+    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 60, swimmerY - 3, WHITE);
+    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 60, swimmerY, WHITE);
+
+    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 54, swimmerY + 30, WHITE);
+    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 57, swimmerY + 30, WHITE);
+    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 60, swimmerY + 30, WHITE);
+  }
+
 private:
   // Function to get background color based on weather parameter and value
   static uint16_t getBackgroundColor(const String& paramType, float value) {
@@ -260,6 +312,12 @@ private:
       else if (value >= 20) return FOREST_GREEN;   // Warm - green
       else if (value >= 15) return DEEP_SKY_BLUE;  // Cool - blue
       else return DARK_BLUE;                       // Cold - dark blue
+    }
+    else if (paramType == "pool") {
+      if (value >= 25) return TURQUOISE;           // Warm pool - turquoise
+      else if (value >= 20) return TEAL;           // Comfortable - teal
+      else if (value >= 15) return STEEL_BLUE;     // Cool pool - steel blue
+      else return DARK_SLATE_BLUE;                 // Cold pool - dark blue
     }
     else if (paramType == "uv") {
       if (value >= 8) return RED;                  // Very high UV - red
@@ -409,6 +467,9 @@ public:
       if (iconType == "temperature") {
         backgroundColor = getBackgroundColor("temperature", numericValue);
       }
+      else if (iconType == "pool") {
+        backgroundColor = getBackgroundColor("pool", numericValue);
+      }
       else if (iconType == "uv") {
         backgroundColor = getBackgroundColor("uv", numericValue);
       }
@@ -439,6 +500,9 @@ public:
 
       if (iconType == "temperature") {
         drawTemperatureIcon(centerX, centerY);
+      }
+      else if (iconType == "pool") {
+        drawSwimmingIcon(centerX, centerY);
       }
       else if (iconType == "humidity") {
         drawHumidityIcon(centerX, centerY);
@@ -496,6 +560,14 @@ public:
         break;
       case 4: // Cloud Cover
         displaySlide("Cloud Cover", String(currentWeatherData.cloudCover), "%", "cloud");
+        break;
+      case 5: // Pool Temperature
+        if (currentPoolData.isValid) {
+          displaySlide("Pool Temp", String(currentPoolData.temperature, 1), "C", "pool");
+        }
+        else {
+          displaySlide("Pool Temp", "No data", "", "pool");
+        }
         break;
       default:
         break;
@@ -571,6 +643,17 @@ public:
     printLine(message, RED);
     printLine("", RED);
   }
+
+  static void updatePoolData(const PoolTemperatureData& poolData) {
+    Logger::log("=== updatePoolData() called ===");
+    Logger::log("poolData.isValid: ", poolData.isValid);
+
+    currentPoolData = poolData;
+
+    if (poolData.isValid) {
+      Logger::log("Pool temp: " + String(poolData.temperature) + "C, " + poolData.timeAgo);
+    }
+  }
 };
 
 // Static member definitions
@@ -586,3 +669,4 @@ bool Display::touchInProgress = false;
 unsigned long Display::lastSlideChange = 0;
 int Display::currentSlide = 0;
 RealtimeWeatherData Display::currentWeatherData = { 0, 0, 0, 0, 0, false };
+PoolTemperatureData Display::currentPoolData = { "", 0.0f, 0, "", false };
