@@ -162,81 +162,81 @@ private:
 
   // Icon drawing functions for different weather parameters
   static void drawTemperatureIcon(int centerX, int centerY) {
-    // Draw a thermometer (doubled size)
+    // Draw a thermometer (tripled size - doubled + 50%)
     int thermX = centerX;
     int thermY = centerY;
 
-    // Thermometer bulb (circle at bottom) - doubled radius
-    display.fillCircle(thermX, thermY + 40, 16, RED);
+    // Thermometer bulb (circle at bottom) - tripled radius
+    display.fillCircle(thermX, thermY + 60, 24, RED);
 
-    // Thermometer stem (rectangle) - doubled dimensions
-    display.fillRect(thermX - 6, thermY - 40, 12, 80, WHITE);
-    display.drawRect(thermX - 6, thermY - 40, 12, 80, GRAY);
+    // Thermometer stem (rectangle) - tripled dimensions
+    display.fillRect(thermX - 9, thermY - 60, 18, 120, WHITE);
+    display.drawRect(thermX - 9, thermY - 60, 18, 120, GRAY);
 
-    // Temperature markings - doubled spacing and length
+    // Temperature markings - tripled spacing and length
     for (int i = 0; i < 4; i++) {
-      int markY = thermY - 30 + (i * 16);
-      display.drawLine(thermX + 6, markY, thermX + 16, markY, GRAY);
+      int markY = thermY - 45 + (i * 24);
+      display.drawLine(thermX + 9, markY, thermX + 24, markY, GRAY);
     }
   }
 
   static void drawHumidityIcon(int centerX, int centerY) {
-    // Draw a water droplet (doubled size)
+    // Draw a water droplet (tripled size - doubled + 50%)
     int dropX = centerX;
     int dropY = centerY;
 
-    // Water droplet shape using circles and triangle approximation - doubled radius
-    display.fillCircle(dropX, dropY + 10, 24, BLUE);
-    display.fillTriangle(dropX, dropY - 20, dropX - 16, dropY + 10, dropX + 16, dropY + 10, BLUE);
+    // Water droplet shape using circles and triangle approximation - tripled radius
+    display.fillCircle(dropX, dropY + 15, 36, BLUE);
+    display.fillTriangle(dropX, dropY - 30, dropX - 24, dropY + 15, dropX + 24, dropY + 15, BLUE);
 
-    // Highlight for shine effect - doubled radius
-    display.fillCircle(dropX - 8, dropY, 6, LIGHT_BLUE);
+    // Highlight for shine effect - tripled radius
+    display.fillCircle(dropX - 12, dropY, 9, LIGHT_BLUE);
   }
 
   static void drawWindIcon(int centerX, int centerY) {
-    // Draw wind lines (doubled size)
+    // Draw wind lines (tripled size - doubled + 50%)
     int windX = centerX;
     int windY = centerY;
 
-    // Multiple curved wind lines - doubled dimensions
+    // Multiple curved wind lines - tripled dimensions
     for (int i = 0; i < 3; i++) {
-      int lineY = windY - 20 + (i * 16);
-      // Horizontal lines with slight curves - doubled length
-      display.drawLine(windX - 30, lineY, windX + 20, lineY, WHITE);
-      display.drawLine(windX + 20, lineY, windX + 30, lineY - 4, WHITE);
-      display.drawLine(windX + 30, lineY - 4, windX + 24, lineY - 10, WHITE);
+      int lineY = windY - 30 + (i * 24);
+      // Horizontal lines with slight curves - tripled length
+      display.drawLine(windX - 45, lineY, windX + 30, lineY, WHITE);
+      display.drawLine(windX + 30, lineY, windX + 45, lineY - 6, WHITE);
+      display.drawLine(windX + 45, lineY - 6, windX + 36, lineY - 15, WHITE);
     }
   }
 
   static void drawCloudIcon(int centerX, int centerY) {
-    // Draw a cloud (doubled size)
+    // Draw a cloud (tripled size - doubled + 50%)
     int cloudX = centerX;
     int cloudY = centerY;
 
-    // Cloud circles (create puffy cloud shape) - doubled radius
-    display.fillCircle(cloudX - 24, cloudY, 30, WHITE);
-    display.fillCircle(cloudX, cloudY - 16, 36, WHITE);
-    display.fillCircle(cloudX + 24, cloudY, 30, WHITE);
-    display.fillCircle(cloudX + 40, cloudY + 10, 24, WHITE);
+    // Cloud circles (create puffy cloud shape) - tripled radius
+    display.fillCircle(cloudX - 36, cloudY, 45, WHITE);
+    display.fillCircle(cloudX, cloudY - 24, 54, WHITE);
+    display.fillCircle(cloudX + 36, cloudY, 45, WHITE);
+    display.fillCircle(cloudX + 60, cloudY + 15, 36, WHITE);
 
-    // Outline for definition - doubled radius
-    display.drawCircle(cloudX - 24, cloudY, 30, LIGHT_GRAY);
-    display.drawCircle(cloudX, cloudY - 16, 36, LIGHT_GRAY);
-    display.drawCircle(cloudX + 24, cloudY, 30, LIGHT_GRAY);
-    display.drawCircle(cloudX + 40, cloudY + 10, 24, LIGHT_GRAY);
+    // Outline for definition - tripled radius
+    display.drawCircle(cloudX - 36, cloudY, 45, LIGHT_GRAY);
+    display.drawCircle(cloudX, cloudY - 24, 54, LIGHT_GRAY);
+    display.drawCircle(cloudX + 36, cloudY, 45, LIGHT_GRAY);
+    display.drawCircle(cloudX + 60, cloudY + 15, 36, LIGHT_GRAY);
   }
 
   static void drawUVIcon(int centerX, int centerY) {
-    // Draw a sun with UV rays (doubled size)
+    // Draw a sun with UV rays (tripled size - doubled + 50%)
     int sunX = centerX;
     int sunY = centerY;
 
-    // Sun body - doubled radius
-    display.fillCircle(sunX, sunY, 30, YELLOW);
+    // Sun body - tripled radius
+    display.fillCircle(sunX, sunY, 45, YELLOW);
 
-    // Sun rays (longer and more prominent for UV) - doubled length
-    int rayLength = 40;
-    int rayDistance = 36;
+    // Sun rays (longer and more prominent for UV) - tripled length
+    int rayLength = 60;
+    int rayDistance = 54;
 
     // 8 rays in all directions
     for (int i = 0; i < 8; i++) {
@@ -248,6 +248,7 @@ private:
 
       display.drawLine(startX, startY, endX, endY, ORANGE);
       display.drawLine(startX, startY + 1, endX, endY + 1, ORANGE); // Thicker lines
+      display.drawLine(startX + 1, startY, endX + 1, endY, ORANGE); // Even thicker lines
     }
   }
 
@@ -299,7 +300,7 @@ public:
     lastTouchTime = 0;
     touchInProgress = false;
 
-    drawWeatherIcon(display.width() / 2, display.height() / 2 - 20);
+    drawWeatherIcon(display.width() / 2 - 20, display.height() / 2 - 20);
   }
 
   static void setBacklight(bool on) {
@@ -515,14 +516,8 @@ public:
     currentSlide = -1;
     lastSlideChange = millis();
 
-    // Display first slide immediately
-    if (data.isValid) {
-      Logger::log("Data is valid, displaying first slide...");
-      displaySlide("Temperature", String(currentWeatherData.temperature, 1));
-      Logger::log("Started weather slideshow");
-    }
-    else {
-      Logger::log("Error: Invalid data");
+    if (!data.isValid) {
+      displaySlide("Error", "Load failed");
     }
   }
 
