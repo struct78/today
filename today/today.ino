@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include "credentials.h"
 #include "lib/Logger.h"
+#include "lib/TimeManager.h"
 #include "lib/WeatherRealtime.h"
 #include "lib/WeatherForecast.h"
 #include "lib/PoolTemperature.h"
@@ -10,6 +11,7 @@
 WeatherRealtime* realtimeWeather;
 WeatherForecast* forecastWeather;
 PoolTemperature* poolTemperature;
+TimeManager* timeManager;
 
 unsigned long lastUpdate = 0;
 const unsigned long updateIntervalMs = 8 * 60 * 1000; // 8 minutes between updates (safe for 25 req/hour limit)
@@ -62,6 +64,11 @@ void loop() {
 
   // // Update slideshow if weather data is available
   Display::updateSlideShow();
+
+  // Sync with NTP periodically (every 6 hours) for accurate time
+  if (!offlineMode && timeManager != nullptr) {
+    timeManager->resyncIfNeeded();
+  }
 
   // // Check if it's time to update weather data periodically
   if (isUpdateRequired()) {
@@ -202,9 +209,12 @@ void initializeSystem() {
 }
 
 void initializeOfflineMode() {
+  timeManager = new TimeManager();
+  // Don't sync NTP in offline mode, but initialize for time formatting
+
   realtimeWeather = new WeatherRealtime(String("test"), String("test"));
   forecastWeather = new WeatherForecast(String("test"), String("test"));
-  poolTemperature = new PoolTemperature();
+  poolTemperature = new PoolTemperature(timeManager);
 
   updateWeatherData();
 
@@ -239,9 +249,13 @@ bool initializeWiFiConnection() {
 }
 
 void initializeWeatherClients() {
+  timeManager = new TimeManager();
+  timeManager->begin();
+  timeManager->syncWithNTP(); // Initial NTP sync
+
   realtimeWeather = new WeatherRealtime(API_KEY, LOCATION);
   forecastWeather = new WeatherForecast(API_KEY, LOCATION);
-  poolTemperature = new PoolTemperature();
+  poolTemperature = new PoolTemperature(timeManager);
   Logger::log("Fetching initial weather data...");
   updateWeatherData();
 }
