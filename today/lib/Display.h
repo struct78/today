@@ -322,19 +322,19 @@ public:
       // Display the current slide
       switch (currentSlide) {
       case 0: // Temperature
-        displaySlide("Temperature", String(currentWeatherData.temperature, 1), "°");
+        displaySlide("Temperature", String(currentWeatherData.temperature, 1));
         break;
       case 1: // UV Index
-        displaySlide("UV Index", String(currentWeatherData.uvIndex));
+        displaySlide("UV index", String(currentWeatherData.uvIndex));
         break;
       case 2: // Humidity
         displaySlide("Humidity", String(currentWeatherData.humidity, 1), "%");
         break;
       case 3: // Wind Speed
-        displaySlide("Wind Speed", String(currentWeatherData.windSpeed, 1), "km/h");
+        displaySlide("Wind speed", String(currentWeatherData.windSpeed, 1), "km/h");
         break;
       case 4: // Cloud Cover
-        displaySlide("Cloud Cover", String(currentWeatherData.cloudCover), "%");
+        displaySlide("Cloud cover", String(currentWeatherData.cloudCover), "%");
         break;
       default:
         break;
@@ -399,9 +399,9 @@ public:
         continue;
 
       printLine("Day " + String(i + 1), YELLOW);
-      printLine("Temp: " + String(day.temperatureAvg) + "°C");
+      printLine("Temp: " + String(day.temperatureAvg) + "C");
       printLine("UV: " + String(day.uvIndexAvg) + " Cloud: " + String(day.cloudCoverAvg) + "%");
-      printLine("Wind: " + String(day.windSpeedAvg) + " km/h " + String(day.windDirectionAvg) + "°");
+      printLine("Wind: " + String(day.windSpeedAvg) + " km/h " + String(day.windDirectionAvg) + " deg");
       printLine(""); // Empty line between days
     }
   }
