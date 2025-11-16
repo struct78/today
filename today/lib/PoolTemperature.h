@@ -42,7 +42,8 @@ public:
       data.timeAgo = timeManager->formatTimeAgo(data.timestamp);
       data.isValid = true;
       Logger::log("Pool data parsed successfully");
-    } else {
+    }
+    else {
       Logger::log("Failed to parse pool data");
     }
 
