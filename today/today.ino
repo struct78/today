@@ -11,7 +11,7 @@ WeatherForecast* forecastWeather;
 
 unsigned long lastUpdate = 0;
 const unsigned long updateIntervalMs = 8 * 60 * 1000; // 8 minutes between updates (safe for 25 req/hour limit)
-const bool offlineMode = true;
+const bool offlineMode = false;
 const int slideshowTimeMs = 4000;
 bool isLoading = true;
 
@@ -31,9 +31,6 @@ ForecastData loadTestForecastData();
 void setup() {
   initializeSystem();
 
-  // // Test the display with a simple message first
-  // Serial.println("Testing display with simple message...");
-  // Display::displayError("Display Test - If you see this, display works!");
   delay(10000);
 
   if (offlineMode) {
@@ -41,10 +38,10 @@ void setup() {
     return;
   }
 
-  // if (!initializeWiFiConnection()) {
-  //   delay(2000);
-  //   return;
-  // }
+  if (!initializeWiFiConnection()) {
+    delay(2000);
+    return;
+  }
 
   initializeWeatherClients();
 }
@@ -58,20 +55,19 @@ void loop() {
   }
 
   // // Handle touch input for display toggle
-  // Display::handleTouchToggle();
+  Display::handleTouchToggle();
 
   // // Update slideshow if weather data is available
   Display::updateSlideShow();
 
   // // Check if it's time to update weather data periodically
-  // if (isUpdateRequired()) {
-  //   Serial.println("Updating weather data...");
-  //   updateWeatherData();
-  //   lastUpdate = millis();
-  // }
+  if (isUpdateRequired()) {
+    Serial.println("Updating weather data...");
+    updateWeatherData();
+    lastUpdate = millis();
+  }
 
-  // // Small delay to prevent excessive CPU usage
-  delay(slideshowTimeMs);
+  delay(50);
 }
 
 void updateWeatherData() {
@@ -241,6 +237,7 @@ void initializeWeatherClients() {
   realtimeWeather = new WeatherRealtime(API_KEY, LOCATION);
   forecastWeather = new WeatherForecast(API_KEY, LOCATION);
   Logger::log("Fetching initial weather data...");
+  updateWeatherData();
 }
 
 bool isUpdateRequired() {

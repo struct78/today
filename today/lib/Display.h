@@ -94,7 +94,7 @@ private:
   static bool displayOn;
   static unsigned long lastTouchTime;
   static bool touchInProgress;                        // Track if touch is currently active
-  static const unsigned long touchDebounceTime = 200; // 2 second debounce to prevent rapid toggling
+  static const unsigned long touchDebounceTimeMs = 200; // 2 second debounce to prevent rapid toggling
 
   // Slide cycling variables
   static unsigned long lastSlideChange;
@@ -316,11 +316,9 @@ public:
   }
 
   static bool checkTouch() {
-    // Check if screen is touched using the proper Arduino_GigaDisplayTouch library
     unsigned long currentTime = millis();
 
-    // Check for touch using the GigaDisplayTouch library
-    GDTpoint_t points[5]; // Support up to 5 touch points
+    GDTpoint_t points[5];
     uint8_t contacts = touch.getTouchPoints(points);
 
     if (contacts > 0) {
@@ -328,7 +326,7 @@ public:
       if (!touchInProgress) {
         // This is a new touch (finger just pressed down)
         // Debounce check
-        if (currentTime - lastTouchTime < touchDebounceTime) {
+        if (currentTime - lastTouchTime < touchDebounceTimeMs) {
           return false;
         }
 
@@ -488,16 +486,16 @@ public:
         displaySlide("Temperature", String(currentWeatherData.temperature, 1), "C", "temperature");
         break;
       case 1: // UV Index
-        displaySlide("UV index", String(currentWeatherData.uvIndex), "", "uv");
+        displaySlide("UV Index", String(currentWeatherData.uvIndex), "", "uv");
         break;
       case 2: // Humidity
         displaySlide("Humidity", String(currentWeatherData.humidity, 1), "%", "humidity");
         break;
       case 3: // Wind Speed
-        displaySlide("Wind speed", String(currentWeatherData.windSpeed, 1), "km/h", "wind");
+        displaySlide("Wind Speed", String(currentWeatherData.windSpeed, 1), "km/h", "wind");
         break;
       case 4: // Cloud Cover
-        displaySlide("Cloud cover", String(currentWeatherData.cloudCover), "%", "cloud");
+        displaySlide("Cloud Cover", String(currentWeatherData.cloudCover), "%", "cloud");
         break;
       default:
         break;
@@ -524,7 +522,9 @@ public:
   static void displayRealtimeWeather(const RealtimeWeatherData& data) {
     Logger::log("DisplayOn: ", displayOn);
 
-    if (!displayOn) return; // Don't display if screen is off
+    if (!displayOn) {
+      return;
+    }
 
     if (!data.isValid) {
       displayError("No realtime data available");
