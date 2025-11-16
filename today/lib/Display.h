@@ -89,8 +89,8 @@ private:
   static GigaDisplayBacklight backlight;
   static int currentY;
   static const int lineHeight = 25;
-  static const int marginY = 60;
-  static const int marginX = 40;
+  static const int marginY = 50;
+  static const int marginX = 30;
   static bool displayOn;
   static unsigned long lastTouchTime;
   static bool touchInProgress;                        // Track if touch is currently active
@@ -286,38 +286,18 @@ public:
 
     // Clear screen with DEEP_SKY_BLUE background
     display.fillScreen(DEEP_SKY_BLUE);
-    Logger::log("Screen filled with DEEP_SKY_BLUE");
 
     // Display title at top left with enhanced styling using Inter font
     display.setFont(&Inter_Regular12pt7b);
     display.setTextColor(WHITE);
-    display.setCursor(marginY, marginY + 40); // Adjusted Y for font baseline
+    display.setCursor(marginX, marginY + 20);
     display.print(title.c_str());
-    Logger::log("Title printed with Inter Bold 18pt font");
 
     // Display value at bottom left with largest font size using Inter font
     display.setFont(&Inter_Medium24pt7b);
-    int valueY = display.height() - 120;
-    display.setCursor(marginY, valueY);
+    int valueY = display.height() - marginY;
+    display.setCursor(marginX, valueY);
     display.print((value + unit).c_str());
-
-    Logger::log("Value printed with Inter Medium 24pt font");
-
-    // // Add unit if provided - aligned with value baseline
-    // if (unit.length() > 0) {
-    //   display.setTextSize(2); // Smaller unit size for better proportion with 24pt font
-    //   // Calculate actual character width for 24pt font (approximately 24 pixels per character)
-    //   int valuePixelWidth = value.length() * 24;
-    //   int unitX = marginY + valuePixelWidth + 10; // Add small gap between value and unit
-    //   int unitY = valueY - 10; // Align with value baseline (adjust for size difference)
-
-    //   display.setCursor(unitX, unitY);
-    //   display.print(unit);
-    //   // Bold effect for unit
-    //   display.setCursor(unitX + 1, unitY);
-    //   display.print(unit);
-    //   Serial.println("Unit printed with proper alignment");
-    // }
 
     resetTextSize();
     Logger::log("=== displaySlide() completed ===");
@@ -342,7 +322,7 @@ public:
       // Display the current slide
       switch (currentSlide) {
       case 0: // Temperature
-        displaySlide("Temperature", String(currentWeatherData.temperature, 1), "");
+        displaySlide("Temperature", String(currentWeatherData.temperature, 1), "°");
         break;
       case 1: // UV Index
         displaySlide("UV Index", String(currentWeatherData.uvIndex));
@@ -376,7 +356,7 @@ public:
     // Display first slide immediately
     if (data.isValid) {
       Logger::log("Data is valid, displaying first slide...");
-      displaySlide("Temperature", String(data.temperature));
+      displaySlide("Temperature", String(currentWeatherData.temperature, 1));
       Logger::log("Started weather slideshow");
     }
     else {
