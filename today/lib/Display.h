@@ -1,6 +1,7 @@
 // Display.h
 #pragma once
 #include <Arduino.h>
+#include "Logger.h"
 #include "WeatherRealtime.h"
 #include "WeatherForecast.h"
 #include <Arduino_GigaDisplay.h>
@@ -88,7 +89,7 @@ private:
   static GigaDisplayBacklight backlight;
   static int currentY;
   static const int lineHeight = 25;
-  static const int marginY = 50;
+  static const int marginY = 60;
   static const int marginX = 40;
   static bool displayOn;
   static unsigned long lastTouchTime;
@@ -166,7 +167,7 @@ private:
 
 public:
   static void init() {
-    Serial.println("=== Display::init() starting ===");
+    Logger::log("=== Display::init() starting ===");
 
     display.begin();
     touch.begin();
@@ -180,7 +181,7 @@ public:
     lastTouchTime = 0;
     touchInProgress = false;
 
-    drawWeatherIcon(display.width() / 2, display.height() / 2);
+    drawWeatherIcon(display.width() / 2, display.height() / 2 - 20);
   }
 
   static void setBacklight(bool on) {
@@ -219,11 +220,7 @@ public:
         lastTouchTime = currentTime;
         touchInProgress = true;
 
-        Serial.print("Touch press detected at: (");
-        Serial.print(x);
-        Serial.print(", ");
-        Serial.print(y);
-        Serial.println(")");
+        Logger::log("Touch press detected at: (" + String(x) + ", " + String(y) + ")");
         return true;
       }
       // Touch is still ongoing, don't trigger again
@@ -277,37 +274,34 @@ public:
   }
 
   static void displaySlide(const String& title, const String& value, const String& unit = "") {
-    Serial.println("=== displaySlide() called ===");
-    Serial.print("displayOn: ");
-    Serial.println(displayOn);
-    Serial.print("Title: ");
-    Serial.println(title);
-    Serial.print("Value: ");
-    Serial.println(value);
+    Logger::log("=== displaySlide() called ===");
+    Logger::log("displayOn: ", displayOn);
+    Logger::log("Title: ", title);
+    Logger::log("Value: ", value);
 
     if (!displayOn) {
-      Serial.println("Display is OFF, not showing slide");
+      Logger::log("Display is OFF, not showing slide");
       return;
     }
 
     // Clear screen with DEEP_SKY_BLUE background
     display.fillScreen(DEEP_SKY_BLUE);
-    Serial.println("Screen filled with DEEP_SKY_BLUE");
+    Logger::log("Screen filled with DEEP_SKY_BLUE");
 
     // Display title at top left with enhanced styling using Inter font
-    display.setFont(&Inter_Medium24pt7b);
+    display.setFont(&Inter_Regular12pt7b);
     display.setTextColor(WHITE);
     display.setCursor(marginY, marginY + 40); // Adjusted Y for font baseline
-    display.print(title);
-    Serial.println("Title printed with Inter Bold 18pt font");
+    display.print(title.c_str());
+    Logger::log("Title printed with Inter Bold 18pt font");
 
     // Display value at bottom left with largest font size using Inter font
     display.setFont(&Inter_Medium24pt7b);
     int valueY = display.height() - 120;
     display.setCursor(marginY, valueY);
-    display.print(value + unit);
+    display.print((value + unit).c_str());
 
-    Serial.println("Value printed with Inter Medium 24pt font");
+    Logger::log("Value printed with Inter Medium 24pt font");
 
     // // Add unit if provided - aligned with value baseline
     // if (unit.length() > 0) {
@@ -326,13 +320,13 @@ public:
     // }
 
     resetTextSize();
-    Serial.println("=== displaySlide() completed ===");
+    Logger::log("=== displaySlide() completed ===");
   }
 
   static void updateSlideShow() {
     if (!displayOn || !currentWeatherData.isValid) {
-      if (!displayOn) Serial.println("Display is OFF");
-      if (!currentWeatherData.isValid) Serial.println("Weather data is INVALID");
+      if (!displayOn) Logger::log("Display is OFF");
+      if (!currentWeatherData.isValid) Logger::log("Weather data is INVALID");
       return;
     }
 
@@ -343,14 +337,12 @@ public:
       currentSlide = (currentSlide + 1) % totalSlides;
       lastSlideChange = currentTime;
 
-      Serial.print("Switching to slide ");
-      Serial.print(currentSlide);
-      Serial.println("...");
+      Logger::log("Switching to slide " + String(currentSlide) + "...");
 
       // Display the current slide
       switch (currentSlide) {
       case 0: // Temperature
-        displaySlide("Temperature", String(currentWeatherData.temperature, 1), "°C");
+        displaySlide("Temperature", String(currentWeatherData.temperature, 1), "");
         break;
       case 1: // UV Index
         displaySlide("UV Index", String(currentWeatherData.uvIndex));
@@ -368,19 +360,14 @@ public:
         break;
       }
 
-      Serial.print("Displaying slide ");
-      Serial.print(currentSlide + 1);
-      Serial.print(" of ");
-      Serial.println(totalSlides);
+      Logger::log("Displaying slide " + String(currentSlide + 1) + " of " + String(totalSlides));
     }
   }
 
   static void startSlideShow(const RealtimeWeatherData& data) {
-    Serial.println("=== startSlideShow() called ===");
-    Serial.print("data.isValid: ");
-    Serial.println(data.isValid);
-    Serial.print("displayOn: ");
-    Serial.println(displayOn);
+    Logger::log("=== startSlideShow() called ===");
+    Logger::log("data.isValid: ", data.isValid);
+    Logger::log("displayOn: ", displayOn);
 
     currentWeatherData = data;
     currentSlide = -1;
@@ -388,18 +375,17 @@ public:
 
     // Display first slide immediately
     if (data.isValid) {
-      Serial.println("Data is valid, displaying first slide...");
-      displaySlide("UV INDEX", String(data.uvIndex));
-      Serial.println("Started weather slideshow");
+      Logger::log("Data is valid, displaying first slide...");
+      displaySlide("Temperature", String(data.temperature));
+      Logger::log("Started weather slideshow");
     }
     else {
-      Serial.println("Data is NOT valid, cannot start slideshow");
+      Logger::log("Error: Invalid data");
     }
   }
 
   static void displayRealtimeWeather(const RealtimeWeatherData& data) {
-    Serial.print("DisplayOn: ");
-    Serial.println(displayOn);
+    Logger::log("DisplayOn: ", displayOn);
 
     if (!displayOn) return; // Don't display if screen is off
 

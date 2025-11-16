@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include <WiFi.h>
 #include "credentials.h"
+#include "lib/Logger.h"
 #include "lib/WeatherRealtime.h"
 #include "lib/WeatherForecast.h"
 #include "lib/Display.h"
@@ -50,10 +51,10 @@ void setup() {
 
 void loop() {
   if (isLoading) {
-    Serial.println("Loading phase - waiting 5 seconds...");
+    Logger::log("Loading phase - waiting 5 seconds...");
     delay(5000);
     isLoading = false;
-    Serial.println("Loading complete - starting main loop");
+    Logger::log("Loading complete - starting main loop");
   }
 
   // // Handle touch input for display toggle
@@ -75,7 +76,7 @@ void loop() {
 
 void updateWeatherData() {
   if (!offlineMode && WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi not connected - skipping weather update");
+    Logger::log("WiFi not connected - skipping weather update");
     return;
   }
 
@@ -86,9 +87,9 @@ void updateWeatherData() {
 }
 
 void clearScreen() {
-  Serial.println("Clearing screen...");
+  Logger::log("Clearing screen...");
   Display::clearScreen();
-  Serial.println("Screen cleared");
+  Logger::log("Screen cleared");
 }
 
 // Test data loading functions
@@ -129,17 +130,17 @@ RealtimeWeatherData loadTestRealtimeData() {
 
   // Use the existing parsing function from WeatherRealtime class
   if (!realtimeWeather || !realtimeWeather->parseRealtimeJson(String(testRealtimeJson), data)) {
-    Serial.println("Failed to parse test realtime data");
+    Logger::log("Failed to parse test realtime data");
     return data;
   }
 
-  Serial.println("Test realtime data parsed successfully");
+  Logger::log("Test realtime data parsed successfully");
   data.isValid = true;  // Explicitly set isValid flag
   return data;
 }
 
 ForecastData loadTestForecastData() {
-  Serial.println("=== Loading test forecast data ===");
+  Logger::log("=== Loading test forecast data ===");
   // Test data from examples/forecast.json (simplified for this example)
   const char* testForecastJson = R"({
     "timelines": {
@@ -171,26 +172,26 @@ ForecastData loadTestForecastData() {
   })";
 
   ForecastData data = { {}, 0, false };
-  Serial.println("Initialized forecast data structure");
+  Logger::log("Initialized forecast data structure");
 
   // Check if forecastWeather object exists
   if (!forecastWeather) {
-    Serial.println("ERROR: forecastWeather object is NULL!");
+    Logger::log("ERROR: forecastWeather object is NULL!");
     return data;
   }
 
-  Serial.println("forecastWeather object exists, calling parseForecastJson...");
+  Logger::log("forecastWeather object exists, calling parseForecastJson...");
 
   // Use the existing parsing function from WeatherForecast class
   if (!forecastWeather->parseForecastJson(String(testForecastJson), data)) {
-    Serial.println("Failed to parse test forecast data");
+    Logger::log("Failed to parse test forecast data");
     return data;
   }
 
-  Serial.println("Test forecast data parsed successfully");
-  Serial.println("Setting isValid to true...");
+  Logger::log("Test forecast data parsed successfully");
+  Logger::log("Setting isValid to true...");
   data.isValid = true;
-  Serial.println("=== Test forecast data loading complete ===");
+  Logger::log("=== Test forecast data loading complete ===");
   return data;
 }
 
@@ -212,7 +213,7 @@ void initializeOfflineMode() {
 }
 
 bool initializeWiFiConnection() {
-  Serial.println("Connecting to WiFi...");
+  Logger::log("Connecting to WiFi...");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int connectionAttempts = 0;
@@ -224,18 +225,14 @@ bool initializeWiFiConnection() {
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println();
-    Serial.print("WiFi connected! IP address: ");
-    Serial.println(WiFi.localIP());
-    Serial.print("Signal strength: ");
-    Serial.print(WiFi.RSSI());
-    Serial.println(" dBm");
+    Logger::log("WiFi connected! IP address: ", WiFi.localIP().toString());
+    Logger::log("Signal strength: " + String(WiFi.RSSI()) + " dBm");
     return true;
   }
 
   Serial.println();
-  Serial.println("WiFi connection failed!");
-  Serial.print("WiFi status: ");
-  Serial.println(WiFi.status());
+  Logger::log("WiFi connection failed!");
+  Logger::log("WiFi status: ", (int)WiFi.status());
   Display::displayError("WiFi connection failed");
   return false;
 }
@@ -243,7 +240,7 @@ bool initializeWiFiConnection() {
 void initializeWeatherClients() {
   realtimeWeather = new WeatherRealtime(API_KEY, LOCATION);
   forecastWeather = new WeatherForecast(API_KEY, LOCATION);
-  Serial.println("Fetching initial weather data...");
+  Logger::log("Fetching initial weather data...");
 }
 
 bool isUpdateRequired() {
@@ -256,32 +253,31 @@ bool isUpdateRequired() {
 }
 
 void fetchAndDisplayRealtime() {
-  Serial.println("=== Starting realtime weather fetch ===");
+  Logger::log("=== Starting realtime weather fetch ===");
   RealtimeWeatherData realtimeData;
 
   if (offlineMode) {
-    Serial.println("Using test data for realtime weather...");
+    Logger::log("Using test data for realtime weather...");
     realtimeData = loadTestRealtimeData();
   }
   else {
-    Serial.println("Fetching realtime weather...");
+    Logger::log("Fetching realtime weather...");
     realtimeData = realtimeWeather->fetchWeatherData();
   }
 
-  Serial.print("Realtime data valid: ");
-  Serial.println(realtimeData.isValid ? "YES" : "NO");
+  Logger::log("Realtime data valid: ", realtimeData.isValid);
 
   if (!realtimeData.isValid) {
-    Serial.println("Failed to get realtime weather data");
+    Logger::log("Failed to get realtime weather data");
     Display::displayError("Failed to get current weather");
     return;
   }
 
-  Serial.println("Realtime weather data received successfully");
-  Serial.println("Calling Display::displayRealtimeWeather...");
+  Logger::log("Realtime weather data received successfully");
+  Logger::log("Calling Display::displayRealtimeWeather...");
 
   Display::displayRealtimeWeather(realtimeData);
-  Serial.println("=== Realtime display call completed ===");
+  Logger::log("=== Realtime display call completed ===");
 }
 
 void fetchAndDisplayForecast() {

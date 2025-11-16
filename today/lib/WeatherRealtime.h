@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <ArduinoHttpClient.h>
+#include "Logger.h"
 
 struct RealtimeWeatherData {
   float temperature;
@@ -29,7 +30,7 @@ public:
     RealtimeWeatherData data = { 0, 0, 0, 0, 0, 0, false };
 
     if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("WiFi not connected");
+      Logger::log("WiFi not connected");
       return data;
     }
 
@@ -38,7 +39,7 @@ public:
 
     String path = "/v4/weather/realtime?location=" + location + "&apikey=" + apiKey;
 
-    Serial.println(path);
+    Logger::log(path);
 
     http.beginRequest();
     http.get(path);
@@ -53,7 +54,7 @@ public:
 
       DeserializationError error = deserializeJson(doc, payload);
       if (error) {
-        Serial.println("JSON parsing failed");
+        Logger::log("JSON parsing failed");
         http.stop();
         return data;
       }
@@ -72,9 +73,8 @@ public:
     }
     else {
       String payload = http.responseBody();
-      Serial.println(payload);
-      Serial.print("HTTP error: ");
-      Serial.println(statusCode);
+      Logger::log(payload);
+      Logger::log("HTTP error: ", statusCode);
     }
 
     http.stop();
