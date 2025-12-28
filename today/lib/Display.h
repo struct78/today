@@ -267,7 +267,7 @@ private:
     int swimmerY = centerY;
 
     // Draw water waves at bottom (tripled size)
-    int waveY = swimmerY + 40;
+    int waveY = swimmerY;
     for (int i = 0; i < 3; i++) {
       int waveBaseY = waveY + (i * 12);
       // Wavy lines using multiple short segments
@@ -278,31 +278,6 @@ private:
         display.drawLine(swimmerX + x, y1 + 1, swimmerX + x + 15, y2 + 1, CYAN);
       }
     }
-
-    // Draw swimmer's head (circle) - tripled radius
-    display.fillCircle(swimmerX + 30, swimmerY - 30, 18, WHITE);
-    display.drawCircle(swimmerX + 30, swimmerY - 30, 18, GRAY);
-
-    // Draw swimmer's body (oval/rectangle) - tripled dimensions
-    display.fillRect(swimmerX - 15, swimmerY - 12, 45, 24, WHITE);
-    display.drawRect(swimmerX - 15, swimmerY - 12, 45, 24, GRAY);
-
-    // Draw extended arm (swimming stroke) - tripled length
-    display.drawLine(swimmerX - 15, swimmerY - 6, swimmerX - 60, swimmerY - 24, WHITE);
-    display.drawLine(swimmerX - 15, swimmerY - 6, swimmerX - 60, swimmerY - 21, WHITE);
-    display.drawLine(swimmerX - 15, swimmerY - 6, swimmerX - 60, swimmerY - 18, WHITE);
-
-    // Hand
-    display.fillCircle(swimmerX - 60, swimmerY - 21, 6, WHITE);
-
-    // Draw legs (kicking) - tripled length
-    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 60, swimmerY - 6, WHITE);
-    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 60, swimmerY - 3, WHITE);
-    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 60, swimmerY, WHITE);
-
-    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 54, swimmerY + 30, WHITE);
-    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 57, swimmerY + 30, WHITE);
-    display.drawLine(swimmerX + 30, swimmerY + 12, swimmerX + 60, swimmerY + 30, WHITE);
   }
 
 private:
@@ -341,6 +316,32 @@ private:
 
   static void resetTextSize() {
     display.setTextSize(2);
+  }
+
+  // Helper function to get day of week from ISO date string
+  static String getDayOfWeek(const String& dateStr) {
+    // Extract date from ISO format like "2025-11-08T00:00:00Z"
+    if (dateStr.length() < 10) return "Unknown";
+
+    int year = dateStr.substring(0, 4).toInt();
+    int month = dateStr.substring(5, 7).toInt();
+    int day = dateStr.substring(8, 10).toInt();
+
+    // Simple day of week calculation (Zeller's congruence simplified)
+    if (month < 3) {
+      month += 12;
+      year--;
+    }
+
+    int q = day;
+    int m = month;
+    int k = year % 100;
+    int j = year / 100;
+
+    int h = (q + (13 * (m + 1)) / 5 + k + k / 4 + j / 4 - 2 * j) % 7;
+
+    String days[] = { "Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri" };
+    return days[h];
   }
 
 public:
@@ -467,7 +468,7 @@ public:
     if (!currentForecastData.isValid || currentForecastData.dayCount == 0) {
       display.setFont(&Inter_Regular12pt7b);
       display.setTextColor(RED);
-      display.setCursor(50, 100);
+      display.setCursor(marginX, marginY + 75);
       display.println("No daily data");
       return;
     }
@@ -489,12 +490,11 @@ public:
       // Draw cell border
       display.drawRect(x, y, cellWidth, cellHeight, GRAY);
 
-      // Day label (simplified - just "Day X")
+      // Day label with actual day of week
       display.setFont(&Inter_Regular12pt7b);
-      display.setTextColor(YELLOW);
+      display.setTextColor(SILVER);
       display.setCursor(x + 25, y + 55);
-      display.print("Day ");
-      display.print(i + 1);
+      display.print(getDayOfWeek(day.date));
 
       // Min temperature
       display.setFont(&Inter_Regular12pt7b);
@@ -530,7 +530,7 @@ public:
     if (!currentForecastData.isValid || currentForecastData.hourCount == 0) {
       display.setFont(&Inter_Regular12pt7b);
       display.setTextColor(RED);
-      display.setCursor(50, 100);
+      display.setCursor(marginX, marginY + 75);
       display.println("No hourly data");
       return;
     }
@@ -657,7 +657,6 @@ public:
 
   static void updateSlideShow() {
     if (!displayOn || !currentWeatherData.isValid) {
-      if (!displayOn) Logger::log("Display is OFF");
       if (!currentWeatherData.isValid) Logger::log("Weather data is INVALID");
       return;
     }
@@ -673,37 +672,36 @@ public:
 
       // Display the current slide with appropriate icons
       switch (currentSlide) {
-        // case 0: // Temperature
-        //   displaySlide("Temperature", String(currentWeatherData.temperature, 1), "C", "temperature");
-        //   break;
-        // case 1: // UV Index
-        //   displaySlide("UV Index", String(currentWeatherData.uvIndex), "", "uv");
-        //   break;
-        // case 2: // Humidity
-        //   displaySlide("Humidity", String(currentWeatherData.humidity, 1), "%", "humidity");
-        //   break;
-        // case 3: // Wind Speed
-        //   displaySlide("Wind Speed", String(currentWeatherData.windSpeed, 1), "km/h", "wind");
-        //   break;
-        // case 4: // Cloud Cover
-        //   displaySlide("Cloud Cover", String(currentWeatherData.cloudCover), "%", "cloud");
-        //   break;
-        // case 5: // Hourly Forecast (3x3 grid)
-        //   displayHourlyForecastGrid();
-        //   break;
-        // case 6: // Daily Forecast (2x2 grid)
-        //   displayDailyForecastGrid();
-        //   break;
-        // case 7: // Pool Temperature
-        //   if (currentPoolData.isValid) {
-        //     displaySlide("Pool Temp", String(currentPoolData.temperature, 1), "C", "pool");
-        //   }
-        //   else {
-        //     displaySlide("Pool Temp", "No data", "", "pool");
-        //   }
-        //   break;
-      default:
+      case 0: // Temperature
+        displaySlide("Temperature", String(currentWeatherData.temperature, 1), "C", "temperature");
+        break;
+      case 1: // UV Index
+        displaySlide("UV Index", String(currentWeatherData.uvIndex), "", "uv");
+        break;
+      case 2: // Humidity
+        displaySlide("Humidity", String(currentWeatherData.humidity, 1), "%", "humidity");
+        break;
+      case 3: // Wind Speed
+        displaySlide("Wind Speed", String(currentWeatherData.windSpeed, 1), "km/h", "wind");
+        break;
+      case 4: // Cloud Cover
+        displaySlide("Cloud Cover", String(currentWeatherData.cloudCover), "%", "cloud");
+        break;
+      case 5: // Hourly Forecast (3x3 grid)
+        displayHourlyForecastGrid();
+        break;
+      case 6: // Daily Forecast (2x2 grid)
         displayDailyForecastGrid();
+        break;
+      case 7: // Pool Temperature
+        if (currentPoolData.isValid) {
+          displaySlide("Pool Temp", String(currentPoolData.temperature, 1), "C", "pool");
+        }
+        else {
+          displaySlide("Pool Temp", "No data", "", "pool");
+        }
+        break;
+      default:
         break;
       }
 
