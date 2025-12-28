@@ -51,14 +51,14 @@ void setup() {
 }
 
 void loop() {
-  if (isLoading) {
-    Logger::log("Loading phase - waiting 5 seconds...");
-    delay(5000);
-    isLoading = false;
-    Logger::log("Loading complete - starting main loop");
-  }
+  // if (isLoading) {
+  //   Logger::log("Loading phase - waiting 5 seconds...");
+  //   delay(5000);
+  //   isLoading = false;
+  //   Logger::log("Loading complete - starting main loop");
+  // }
 
-  // // Handle touch input for display toggle
+  // Handle touch input for display toggle
   Display::handleTouchToggle();
 
   // // Update slideshow if weather data is available
@@ -69,7 +69,7 @@ void loop() {
     timeManager->resyncIfNeeded();
   }
 
-  // // Check if it's time to update weather data periodically
+  // Check if it's time to update weather data periodically
   if (isUpdateRequired()) {
     Serial.println("Updating weather data...");
     updateWeatherData();

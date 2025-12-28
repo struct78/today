@@ -355,11 +355,14 @@ public:
     display.setRotation(1);
     display.fillScreen(DEEP_SKY_BLUE);
 
+    currentY = marginY;
     displayOn = true;
     lastTouchTime = 0;
     touchInProgress = false;
 
     drawWeatherIcon(display.width() / 2 - 20, display.height() / 2 - 20);
+
+    Logger::log("End init");
   }
 
   static void setBacklight(bool on) {
@@ -456,9 +459,9 @@ public:
     clearScreen();
 
     // Title
-    display.setFont(&Inter_Bold18pt7b);
-    display.setTextColor(CYAN);
-    display.setCursor(50, 50);
+    display.setFont(&Inter_Regular12pt7b);
+    display.setTextColor(WHITE);
+    display.setCursor(marginX, marginY + 20);
     display.println("Next 4 Days");
 
     if (!currentForecastData.isValid || currentForecastData.dayCount == 0) {
@@ -470,10 +473,10 @@ public:
     }
 
     // Draw 2x2 grid
-    int gridStartX = 50;
+    int gridStartX = 0;
     int gridStartY = 100;
-    int cellWidth = 240;
-    int cellHeight = 160;
+    int cellWidth = display.width() / 2;
+    int cellHeight = (display.height() - 100) / 2;
 
     for (int i = 0; i < min(4, currentForecastData.dayCount); i++) {
       int row = i / 2;
@@ -484,31 +487,31 @@ public:
       const DailyForecastData& day = currentForecastData.daily[i];
 
       // Draw cell border
-      display.drawRect(x, y, cellWidth - 10, cellHeight - 10, GRAY);
+      display.drawRect(x, y, cellWidth, cellHeight, GRAY);
 
       // Day label (simplified - just "Day X")
       display.setFont(&Inter_Regular12pt7b);
       display.setTextColor(YELLOW);
-      display.setCursor(x + 10, y + 25);
+      display.setCursor(x + 25, y + 55);
       display.print("Day ");
       display.print(i + 1);
 
       // Min temperature
-      display.setFont(&Inter_Medium24pt7b);
+      display.setFont(&Inter_Regular12pt7b);
       display.setTextColor(LIGHT_BLUE);
-      display.setCursor(x + 10, y + 55);
+      display.setCursor(x + 25, y + 110);
       display.print(String(day.temperatureMin, 1));
       display.print("C");
 
       // Max temperature
       display.setTextColor(RED_ORANGE);
-      display.setCursor(x + 10, y + 85);
+      display.setCursor(x + 25, y + 165);
       display.print(String(day.temperatureMax, 1));
       display.print("C");
 
       // Rain icon if needed
       if (day.hasRain) {
-        WeatherIcons::drawRainIcon(display, x + 150, y + 60, LIGHT_BLUE);
+        WeatherIcons::drawRainIcon(display, x + (cellWidth - 50), y + 100, LIGHT_BLUE);
       }
     }
   }
@@ -519,9 +522,9 @@ public:
     clearScreen();
 
     // Title
-    display.setFont(&Inter_Bold18pt7b);
-    display.setTextColor(CYAN);
-    display.setCursor(50, 50);
+    display.setFont(&Inter_Regular12pt7b);
+    display.setTextColor(WHITE);
+    display.setCursor(marginX, marginY + 20);
     display.println("Next 9 Hours");
 
     if (!currentForecastData.isValid || currentForecastData.hourCount == 0) {
@@ -533,10 +536,10 @@ public:
     }
 
     // Draw 3x3 grid
-    int gridStartX = 50;
+    int gridStartX = 0;
     int gridStartY = 100;
-    int cellWidth = 160;
-    int cellHeight = 120;
+    int cellWidth = display.width() / 3;
+    int cellHeight = (display.height() - gridStartY) / 3;
 
     for (int i = 0; i < min(9, currentForecastData.hourCount); i++) {
       int row = i / 3;
@@ -551,25 +554,25 @@ public:
       int hourNum = timeStr.substring(11, 13).toInt();
 
       // Draw cell border
-      display.drawRect(x, y, cellWidth - 10, cellHeight - 10, GRAY);
+      display.drawRect(x, y, cellWidth, cellHeight, GRAY);
 
       // Hour label
       display.setFont(&Inter_Regular12pt7b);
       display.setTextColor(YELLOW);
-      display.setCursor(x + 10, y + 25);
+      display.setCursor(x + 25, y + 55);
       display.print(hourNum);
       display.print(":00");
 
       // Temperature
-      display.setFont(&Inter_Medium24pt7b);
+      display.setFont(&Inter_Regular12pt7b);
       display.setTextColor(WHITE);
-      display.setCursor(x + 10, y + 55);
+      display.setCursor(x + 25, y + 100);
       display.print(String(hour.temperature, 1));
       display.print("C");
 
       // Rain icon if needed
       if (hour.hasRain) {
-        WeatherIcons::drawRainIcon(display, x + 100, y + 75, LIGHT_BLUE);
+        WeatherIcons::drawRainIcon(display, x + (cellWidth - 50), y + 75, LIGHT_BLUE);
       }
     }
   }
@@ -670,36 +673,37 @@ public:
 
       // Display the current slide with appropriate icons
       switch (currentSlide) {
-      case 0: // Temperature
-        displaySlide("Temperature", String(currentWeatherData.temperature, 1), "C", "temperature");
-        break;
-      case 1: // UV Index
-        displaySlide("UV Index", String(currentWeatherData.uvIndex), "", "uv");
-        break;
-      case 2: // Humidity
-        displaySlide("Humidity", String(currentWeatherData.humidity, 1), "%", "humidity");
-        break;
-      case 3: // Wind Speed
-        displaySlide("Wind Speed", String(currentWeatherData.windSpeed, 1), "km/h", "wind");
-        break;
-      case 4: // Cloud Cover
-        displaySlide("Cloud Cover", String(currentWeatherData.cloudCover), "%", "cloud");
-        break;
-      case 5: // Pool Temperature
-        if (currentPoolData.isValid) {
-          displaySlide("Pool Temp", String(currentPoolData.temperature, 1), "C", "pool");
-        }
-        else {
-          displaySlide("Pool Temp", "No data", "", "pool");
-        }
-        break;
-      case 6: // Hourly Forecast (3x3 grid)
-        displayHourlyForecastGrid();
-        break;
-      case 7: // Daily Forecast (2x2 grid)
-        displayDailyForecastGrid();
-        break;
+        // case 0: // Temperature
+        //   displaySlide("Temperature", String(currentWeatherData.temperature, 1), "C", "temperature");
+        //   break;
+        // case 1: // UV Index
+        //   displaySlide("UV Index", String(currentWeatherData.uvIndex), "", "uv");
+        //   break;
+        // case 2: // Humidity
+        //   displaySlide("Humidity", String(currentWeatherData.humidity, 1), "%", "humidity");
+        //   break;
+        // case 3: // Wind Speed
+        //   displaySlide("Wind Speed", String(currentWeatherData.windSpeed, 1), "km/h", "wind");
+        //   break;
+        // case 4: // Cloud Cover
+        //   displaySlide("Cloud Cover", String(currentWeatherData.cloudCover), "%", "cloud");
+        //   break;
+        // case 5: // Hourly Forecast (3x3 grid)
+        //   displayHourlyForecastGrid();
+        //   break;
+        // case 6: // Daily Forecast (2x2 grid)
+        //   displayDailyForecastGrid();
+        //   break;
+        // case 7: // Pool Temperature
+        //   if (currentPoolData.isValid) {
+        //     displaySlide("Pool Temp", String(currentPoolData.temperature, 1), "C", "pool");
+        //   }
+        //   else {
+        //     displaySlide("Pool Temp", "No data", "", "pool");
+        //   }
+        //   break;
       default:
+        displayDailyForecastGrid();
         break;
       }
 
