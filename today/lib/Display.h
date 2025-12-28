@@ -107,9 +107,10 @@ private:
   static unsigned long lastSlideChange;
   static int currentSlide;
   static const unsigned long slideDuration = 7000;
-  static const int totalSlides = 6;
+  static const int totalSlides = 8;
   static RealtimeWeatherData currentWeatherData;
   static PoolTemperatureData currentPoolData;
+  static ForecastData currentForecastData;
 
 private:
   static void drawWeatherIcon(int centerX, int centerY) {
@@ -349,11 +350,11 @@ public:
     display.begin();
     touch.begin();
     backlight.begin();
+    currentY = marginY;
 
     display.setRotation(1);
     display.fillScreen(DEEP_SKY_BLUE);
 
-    currentY = marginY;
     displayOn = true;
     lastTouchTime = 0;
     touchInProgress = false;
@@ -370,6 +371,7 @@ public:
     else {
       backlight.set(0);
     }
+
     displayOn = on;
   }
 
@@ -448,14 +450,136 @@ public:
     }
   }
 
+  static void displayDailyForecastGrid() {
+    if (!displayOn) return;
+
+    clearScreen();
+
+    // Title
+    display.setFont(&Inter_Bold18pt7b);
+    display.setTextColor(CYAN);
+    display.setCursor(50, 50);
+    display.println("Next 4 Days");
+
+    if (!currentForecastData.isValid || currentForecastData.dayCount == 0) {
+      display.setFont(&Inter_Regular12pt7b);
+      display.setTextColor(RED);
+      display.setCursor(50, 100);
+      display.println("No daily data");
+      return;
+    }
+
+    // Draw 2x2 grid
+    int gridStartX = 50;
+    int gridStartY = 100;
+    int cellWidth = 240;
+    int cellHeight = 160;
+
+    for (int i = 0; i < min(4, currentForecastData.dayCount); i++) {
+      int row = i / 2;
+      int col = i % 2;
+      int x = gridStartX + (col * cellWidth);
+      int y = gridStartY + (row * cellHeight);
+
+      const DailyForecastData& day = currentForecastData.daily[i];
+
+      // Draw cell border
+      display.drawRect(x, y, cellWidth - 10, cellHeight - 10, GRAY);
+
+      // Day label (simplified - just "Day X")
+      display.setFont(&Inter_Regular12pt7b);
+      display.setTextColor(YELLOW);
+      display.setCursor(x + 10, y + 25);
+      display.print("Day ");
+      display.print(i + 1);
+
+      // Min temperature
+      display.setFont(&Inter_Medium24pt7b);
+      display.setTextColor(LIGHT_BLUE);
+      display.setCursor(x + 10, y + 55);
+      display.print(String(day.temperatureMin, 1));
+      display.print("C");
+
+      // Max temperature
+      display.setTextColor(RED_ORANGE);
+      display.setCursor(x + 10, y + 85);
+      display.print(String(day.temperatureMax, 1));
+      display.print("C");
+
+      // Rain icon if needed
+      if (day.hasRain) {
+        WeatherIcons::drawRainIcon(display, x + 150, y + 60, LIGHT_BLUE);
+      }
+    }
+  }
+
+  static void displayHourlyForecastGrid() {
+    if (!displayOn) return;
+
+    clearScreen();
+
+    // Title
+    display.setFont(&Inter_Bold18pt7b);
+    display.setTextColor(CYAN);
+    display.setCursor(50, 50);
+    display.println("Next 9 Hours");
+
+    if (!currentForecastData.isValid || currentForecastData.hourCount == 0) {
+      display.setFont(&Inter_Regular12pt7b);
+      display.setTextColor(RED);
+      display.setCursor(50, 100);
+      display.println("No hourly data");
+      return;
+    }
+
+    // Draw 3x3 grid
+    int gridStartX = 50;
+    int gridStartY = 100;
+    int cellWidth = 160;
+    int cellHeight = 120;
+
+    for (int i = 0; i < min(9, currentForecastData.hourCount); i++) {
+      int row = i / 3;
+      int col = i % 3;
+      int x = gridStartX + (col * cellWidth);
+      int y = gridStartY + (row * cellHeight);
+
+      const HourlyForecastData& hour = currentForecastData.hourly[i];
+
+      // Extract hour from time string (simplified)
+      String timeStr = hour.time;
+      int hourNum = timeStr.substring(11, 13).toInt();
+
+      // Draw cell border
+      display.drawRect(x, y, cellWidth - 10, cellHeight - 10, GRAY);
+
+      // Hour label
+      display.setFont(&Inter_Regular12pt7b);
+      display.setTextColor(YELLOW);
+      display.setCursor(x + 10, y + 25);
+      display.print(hourNum);
+      display.print(":00");
+
+      // Temperature
+      display.setFont(&Inter_Medium24pt7b);
+      display.setTextColor(WHITE);
+      display.setCursor(x + 10, y + 55);
+      display.print(String(hour.temperature, 1));
+      display.print("C");
+
+      // Rain icon if needed
+      if (hour.hasRain) {
+        WeatherIcons::drawRainIcon(display, x + 100, y + 75, LIGHT_BLUE);
+      }
+    }
+  }
+
   static void displaySlide(const String& title, const String& value, const String& unit = "", const String& iconType = "") {
-    Logger::log("=== displaySlide() called ===");
     Logger::log("displayOn: ", displayOn);
     Logger::log("Title: ", title);
     Logger::log("Value: ", value);
 
     if (!displayOn) {
-      Logger::log("Display is OFF, not showing slide");
       return;
     }
 
@@ -569,6 +693,12 @@ public:
           displaySlide("Pool Temp", "No data", "", "pool");
         }
         break;
+      case 6: // Hourly Forecast (3x3 grid)
+        displayHourlyForecastGrid();
+        break;
+      case 7: // Daily Forecast (2x2 grid)
+        displayDailyForecastGrid();
+        break;
       default:
         break;
       }
@@ -644,6 +774,17 @@ public:
     printLine("", RED);
   }
 
+  static void updateForecastData(const ForecastData& forecastData) {
+    Logger::log("=== updateForecastData() called ===");
+    Logger::log("forecastData.isValid: ", forecastData.isValid);
+
+    currentForecastData = forecastData;
+
+    if (forecastData.isValid) {
+      Logger::log("Hourly count: " + String(forecastData.hourCount) + ", Daily count: " + String(forecastData.dayCount));
+    }
+  }
+
   static void updatePoolData(const PoolTemperatureData& poolData) {
     Logger::log("=== updatePoolData() called ===");
     Logger::log("poolData.isValid: ", poolData.isValid);
@@ -670,3 +811,4 @@ unsigned long Display::lastSlideChange = 0;
 int Display::currentSlide = 0;
 RealtimeWeatherData Display::currentWeatherData = { 0, 0, 0, 0, 0, false };
 PoolTemperatureData Display::currentPoolData = { "", 0.0f, 0, "", false };
+ForecastData Display::currentForecastData = { {}, {}, 0, 0, false };

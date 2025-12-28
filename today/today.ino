@@ -15,7 +15,7 @@ TimeManager* timeManager;
 
 unsigned long lastUpdate = 0;
 const unsigned long updateIntervalMs = 8 * 60 * 1000; // 8 minutes between updates (safe for 25 req/hour limit)
-const bool offlineMode = false;
+const bool offlineMode = true;
 const int slideshowTimeMs = 4000;
 bool isLoading = true;
 
@@ -27,16 +27,15 @@ void fetchAndDisplayForecast();
 void fetchAndDisplayRealtime();
 void fetchAndDisplayPoolTemp();
 void initializeOfflineMode();
-void initializeSystem();
 void initializeWeatherClients();
 void updateWeatherData();
 RealtimeWeatherData loadTestRealtimeData();
 ForecastData loadTestForecastData();
 
 void setup() {
-  initializeSystem();
-
-  delay(10000);
+  Serial.begin(115200);
+  delay(1000);
+  Display::init();
 
   if (offlineMode) {
     initializeOfflineMode();
@@ -91,8 +90,8 @@ void updateWeatherData() {
   delay(10);
   fetchAndDisplayPoolTemp();
   delay(10);
-  // Remove forecast for now to focus on slideshow
-  // fetchAndDisplayForecast();
+  // Enable forecast for new slides
+  fetchAndDisplayForecast();
 }
 
 void clearScreen() {
@@ -150,9 +149,74 @@ RealtimeWeatherData loadTestRealtimeData() {
 
 ForecastData loadTestForecastData() {
   Logger::log("=== Loading test forecast data ===");
-  // Test data from examples/forecast.json (simplified for this example)
+  // Test data from examples/forecast.json with hourly and daily data
   const char* testForecastJson = R"({
     "timelines": {
+      "hourly": [
+        {
+          "time": "2025-11-08T01:00:00Z",
+          "values": {
+            "temperature": 8.9,
+            "rainAccumulation": 0
+          }
+        },
+        {
+          "time": "2025-11-08T02:00:00Z",
+          "values": {
+            "temperature": 8.5,
+            "rainAccumulation": 0.2
+          }
+        },
+        {
+          "time": "2025-11-08T03:00:00Z",
+          "values": {
+            "temperature": 8.1,
+            "rainAccumulation": 0
+          }
+        },
+        {
+          "time": "2025-11-08T04:00:00Z",
+          "values": {
+            "temperature": 7.8,
+            "rainAccumulation": 0.5
+          }
+        },
+        {
+          "time": "2025-11-08T05:00:00Z",
+          "values": {
+            "temperature": 7.5,
+            "rainAccumulation": 0
+          }
+        },
+        {
+          "time": "2025-11-08T06:00:00Z",
+          "values": {
+            "temperature": 7.2,
+            "rainAccumulation": 0
+          }
+        },
+        {
+          "time": "2025-11-08T07:00:00Z",
+          "values": {
+            "temperature": 8.0,
+            "rainAccumulation": 0.1
+          }
+        },
+        {
+          "time": "2025-11-08T08:00:00Z",
+          "values": {
+            "temperature": 9.5,
+            "rainAccumulation": 0
+          }
+        },
+        {
+          "time": "2025-11-08T09:00:00Z",
+          "values": {
+            "temperature": 11.0,
+            "rainAccumulation": 0
+          }
+        }
+      ],
       "daily": [
         {
           "time": "2025-11-08T00:00:00Z",
@@ -160,9 +224,12 @@ ForecastData loadTestForecastData() {
             "cloudCoverAvg": 61,
             "temperatureApparentAvg": 10.7,
             "temperatureAvg": 10.7,
+            "temperatureMin": 1.5,
+            "temperatureMax": 11.7,
             "uvIndexAvg": 1,
             "windSpeedAvg": 2.8,
-            "windDirectionAvg": 157
+            "windDirectionAvg": 157,
+            "rainAccumulationAvg": 0.12
           }
         },
         {
@@ -171,16 +238,47 @@ ForecastData loadTestForecastData() {
             "cloudCoverAvg": 45,
             "temperatureApparentAvg": 12.5,
             "temperatureAvg": 12.5,
+            "temperatureMin": 2.1,
+            "temperatureMax": 15.2,
             "uvIndexAvg": 3,
             "windSpeedAvg": 4.2,
-            "windDirectionAvg": 180
+            "windDirectionAvg": 180,
+            "rainAccumulationAvg": 0
+          }
+        },
+        {
+          "time": "2025-11-10T00:00:00Z",
+          "values": {
+            "cloudCoverAvg": 78,
+            "temperatureApparentAvg": 9.8,
+            "temperatureAvg": 9.8,
+            "temperatureMin": 1.0,
+            "temperatureMax": 13.5,
+            "uvIndexAvg": 2,
+            "windSpeedAvg": 3.5,
+            "windDirectionAvg": 210,
+            "rainAccumulationAvg": 0.25
+          }
+        },
+        {
+          "time": "2025-11-11T00:00:00Z",
+          "values": {
+            "cloudCoverAvg": 35,
+            "temperatureApparentAvg": 14.2,
+            "temperatureAvg": 14.2,
+            "temperatureMin": 3.8,
+            "temperatureMax": 18.1,
+            "uvIndexAvg": 4,
+            "windSpeedAvg": 2.1,
+            "windDirectionAvg": 165,
+            "rainAccumulationAvg": 0
           }
         }
       ]
     }
   })";
 
-  ForecastData data = { {}, 0, false };
+  ForecastData data = { {}, {}, 0, 0, false };
   Logger::log("Initialized forecast data structure");
 
   // Check if forecastWeather object exists
@@ -202,12 +300,6 @@ ForecastData loadTestForecastData() {
   data.isValid = true;
   Logger::log("=== Test forecast data loading complete ===");
   return data;
-}
-
-void initializeSystem() {
-  Serial.begin(115200);
-
-  Display::init();
 }
 
 void initializeOfflineMode() {
@@ -345,12 +437,11 @@ void fetchAndDisplayForecast() {
 
   if (!forecastData.isValid) {
     Serial.println("Failed to get forecast data");
-    Display::displayError("Failed to get forecast");
     return;
   }
 
   Serial.println("Forecast data received successfully");
-  Serial.println("Calling Display::displayForecast...");
-  Display::displayForecast(forecastData);
-  Serial.println("=== Forecast display call completed ===");
+  Serial.println("Calling Display::updateForecastData...");
+  Display::updateForecastData(forecastData);
+  Serial.println("=== Forecast data update completed ===");
 }

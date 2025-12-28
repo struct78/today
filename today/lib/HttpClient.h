@@ -32,10 +32,10 @@ public:
 
     Logger::log("HTTP GET: https://" + host + path);
 
-    // For problematic APIs, use manual HTTP instead of ArduinoHttpClient
-    if (host == "api.canwegointhepool.com") {
-      return getManualHttp(host, path, port);
-    }
+    // // For problematic APIs, use manual HTTP instead of ArduinoHttpClient
+    // if (host == "api.canwegointhepool.com") {
+    //   return getManualHttp(host, path, port);
+    // }
 
     // For other APIs, use the standard ArduinoHttpClient
     HttpClient http = HttpClient(wifiSSLClient, host, port);
