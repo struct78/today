@@ -15,7 +15,7 @@ TimeManager* timeManager;
 
 unsigned long lastUpdate = 0;
 const unsigned long updateIntervalMs = 8 * 60 * 1000; // 8 minutes between updates (safe for 25 req/hour limit)
-const bool offlineMode = true;
+const bool offlineMode = false;
 const int slideshowTimeMs = 4000;
 bool isLoading = true;
 
@@ -88,10 +88,9 @@ void updateWeatherData() {
   // Don't clear screen here as slideshow will handle display
   fetchAndDisplayRealtime();
   delay(10);
-  fetchAndDisplayPoolTemp();
-  delay(10);
-  // Enable forecast for new slides
   fetchAndDisplayForecast();
+  delay(10);
+  fetchAndDisplayPoolTemp();
 }
 
 void clearScreen() {
