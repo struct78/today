@@ -148,7 +148,6 @@ private:
     http.get(path);
     http.sendHeader("accept", "application/json");
     http.sendHeader("user-agent", "Today 0.1");
-    // Add some standard headers that might help with AWS API Gateway
     http.sendHeader("connection", "close");
     http.sendHeader("cache-control", "no-cache");
     http.endRequest();
@@ -238,7 +237,7 @@ private:
       }
       else {
         delay(10); // Small delay when no data available
-        
+
         // If we haven't received any data for 5 seconds and the connection is closed, break
         if (millis() - bodyStart > 5000 && !http.connected()) {
           Logger::log("Connection closed and no more data expected");

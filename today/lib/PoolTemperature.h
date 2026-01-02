@@ -28,7 +28,9 @@ public:
     PoolTemperatureData data = { "", 0.0f, 0, "", false };
 
     Logger::log("Making HTTP request to pool API...");
-    HttpResponse response = httpClient.get("api.canwegointhepool.com", "/app/read");
+    // I had to use a reverse proxy here because of some SSL issue with the ArduinoHttpClient
+    // that I couldn't resolve. The proxy just forwards the request to the actual API @ https://api.canwegointhepool.com
+    HttpResponse response = httpClient.get("divine-haze-a4c6.david-744.workers.dev", "/app/read");
     Logger::log("HTTP request completed");
 
     if (!response.isSuccess) {

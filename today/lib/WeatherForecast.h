@@ -52,7 +52,7 @@ public:
     ForecastData data = { {}, {}, 0, 0, false };
 
     // Try with just daily first to see if that works
-    String queryParams = "location=" + location + "&apikey=" + apiKey + "&timesteps=1h";
+    String queryParams = "location=" + location + "&apikey=" + apiKey + "&timesteps=1d,1h";
     Serial.println("=== FORECAST REQUEST DEBUG ===");
     Serial.println("Full URL: https://api.tomorrow.io/v4/weather/forecast?" + queryParams);
     Serial.println("Location: " + location);
