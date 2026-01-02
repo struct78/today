@@ -361,7 +361,7 @@ public:
     lastTouchTime = 0;
     touchInProgress = false;
 
-    drawWeatherIcon(display.width() / 2 - 20, display.height() / 2 - 20);
+    drawWeatherIcon(display.width() / 2, display.height() / 2 - 20);
 
     Logger::log("End init");
   }
@@ -578,10 +578,6 @@ public:
   }
 
   static void displaySlide(const String& title, const String& value, const String& unit = "", const String& iconType = "") {
-    Logger::log("displayOn: ", displayOn);
-    Logger::log("Title: ", title);
-    Logger::log("Value: ", value);
-
     if (!displayOn) {
       return;
     }
@@ -647,7 +643,7 @@ public:
 
     // Display value at bottom left with largest font size using Inter font
     display.setFont(&Inter_Medium24pt7b);
-    int valueY = display.height() - marginY;
+    int valueY = display.height() - marginY * 0.8;
     display.setCursor(marginX, valueY);
     display.print((value + unit).c_str());
 
@@ -657,7 +653,6 @@ public:
 
   static void updateSlideShow() {
     if (!displayOn || !currentWeatherData.isValid) {
-      if (!currentWeatherData.isValid) Logger::log("Weather data is INVALID");
       return;
     }
 
@@ -710,10 +705,6 @@ public:
   }
 
   static void startSlideShow(const RealtimeWeatherData& data) {
-    Logger::log("=== startSlideShow() called ===");
-    Logger::log("data.isValid: ", data.isValid);
-    Logger::log("displayOn: ", displayOn);
-
     currentWeatherData = data;
     currentSlide = -1;
     lastSlideChange = millis();
@@ -724,8 +715,6 @@ public:
   }
 
   static void displayRealtimeWeather(const RealtimeWeatherData& data) {
-    Logger::log("DisplayOn: ", displayOn);
-
     if (!displayOn) {
       return;
     }
