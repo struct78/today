@@ -14,7 +14,7 @@ PoolTemperature* poolTemperature;
 TimeManager* timeManager;
 
 unsigned long lastUpdate = 0;
-const unsigned long updateIntervalMs = 8 * 60 * 1000; // 8 minutes between updates (safe for 25 req/hour limit)
+const unsigned long updateIntervalMs = 480000; // 8 minutes between updates (safe for 25 req/hour limit)
 const bool offlineMode = false;
 const int slideshowTimeMs = 4000;
 bool isLoading = true;
@@ -23,6 +23,7 @@ bool isLoading = true;
 bool initializeWiFiConnection();
 bool isUpdateRequired();
 void clearScreen();
+void initScreen();
 void fetchAndDisplayForecast();
 void fetchAndDisplayRealtime();
 void fetchAndDisplayPoolTemp();
@@ -34,8 +35,7 @@ ForecastData loadTestForecastData();
 
 void setup() {
   Serial.begin(115200);
-  delay(1000);
-  Display::init();
+  initScreen();
 
   if (offlineMode) {
     initializeOfflineMode();
@@ -51,17 +51,17 @@ void setup() {
 }
 
 void loop() {
-  // if (isLoading) {
-  //   Logger::log("Loading phase - waiting 5 seconds...");
-  //   delay(5000);
-  //   isLoading = false;
-  //   Logger::log("Loading complete - starting main loop");
-  // }
+  if (isLoading) {
+    Logger::log("Loading phase - waiting 5 seconds...");
+    delay(5000);
+    isLoading = false;
+    Logger::log("Loading complete - starting main loop");
+  }
 
   // Handle touch input for display toggle
   Display::handleTouchToggle();
 
-  // // Update slideshow if weather data is available
+  // Update slideshow if weather data is available
   Display::updateSlideShow();
 
   // Sync with NTP periodically (every 6 hours) for accurate time
@@ -77,6 +77,10 @@ void loop() {
   }
 
   delay(50);
+}
+
+void initScreen() {
+  Display::init();
 }
 
 void updateWeatherData() {
@@ -310,8 +314,6 @@ void initializeOfflineMode() {
   poolTemperature = new PoolTemperature(timeManager);
 
   updateWeatherData();
-
-  Display::updateSlideShow();
 
   delay(1000);
 }

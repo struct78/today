@@ -45,7 +45,9 @@ public:
     }
 
     return processResponse(http);
-  }  HttpResponse get(const String& host, const String& path, const String& queryParams, int port = 443) {
+  }
+
+  HttpResponse get(const String& host, const String& path, const String& queryParams, int port = 443) {
     String fullPath = path;
     if (queryParams.length() > 0) {
       fullPath += "?" + queryParams;
@@ -199,6 +201,7 @@ private:
     // Wait for response with longer timeout for slower APIs
     unsigned long start = millis();
     int checkCount = 0;
+
     while (!http.available() && millis() - start < 30000) { // 30 second timeout
       delay(500); // Check every 500ms
       checkCount++;
@@ -227,7 +230,38 @@ private:
       return response;
     }
 
-    response.body = http.responseBody();
+    // Check content length if available
+    int contentLength = http.contentLength();
+    Logger::log("Content length: " + String(contentLength));
+
+    // Try to read body with better handling for large responses
+    Logger::log("Reading response body...");
+
+    // Use the built-in readString method which is more reliable
+    String body = "";
+
+    if (contentLength > 0) {
+      body.reserve(contentLength + 100);
+      Logger::log("Reserved " + String(contentLength + 100) + " bytes for body");
+    }
+
+    unsigned long bodyStart = millis();
+
+    // Use readString() method which handles buffering internally
+    while (http.available() && millis() - bodyStart < 30000) {
+      String chunk = http.readString();
+      body += chunk;
+
+      // Log progress for large responses
+      if (body.length() % 5000 < chunk.length()) {
+        Logger::log("Read " + String(body.length()) + " bytes so far");
+      }
+
+      Logger::log(chunk);
+      // delay(1); // Small delay to prevent watchdog issues
+    }
+
+    response.body = body;
     Logger::log("Response received, length: " + String(response.body.length()));
 
     if (response.statusCode == 200) {
@@ -237,7 +271,7 @@ private:
     else {
       response.error = "HTTP error: " + String(response.statusCode);
       Logger::log(response.error);
-      if (response.body.length() > 0) {
+      if (response.body.length() > 0 && response.body.length() < 500) {
         Logger::log("Response body: " + response.body);
       }
     }

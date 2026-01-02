@@ -51,18 +51,38 @@ public:
   ForecastData fetchForecastData() {
     ForecastData data = { {}, {}, 0, 0, false };
 
-    String queryParams = "location=" + location + "&apikey=" + apiKey + "&timesteps=1h,1d";
+    // Try with just daily first to see if that works
+    String queryParams = "location=" + location + "&apikey=" + apiKey + "&timesteps=1h";
+    Serial.println("=== FORECAST REQUEST DEBUG ===");
+    Serial.println("Full URL: https://api.tomorrow.io/v4/weather/forecast?" + queryParams);
+    Serial.println("Location: " + location);
+
     HttpResponse response = httpClient.get("api.tomorrow.io", "/v4/weather/forecast", queryParams);
+
+    Serial.println("=== RESPONSE DEBUG ===");
+    Serial.println("Success: " + String(response.isSuccess ? "true" : "false"));
+    Serial.println("Status Code: " + String(response.statusCode));
+    Serial.println("Error: " + response.error);
+    Serial.println("Body length: " + String(response.body.length()));
 
     if (!response.isSuccess) {
       Serial.println("Failed to fetch forecast data: " + response.error);
+      Serial.println("Status code: " + String(response.statusCode));
       return data;
     }
 
-    Serial.println(response.body);
+    if (response.body.length() == 0) {
+      Serial.println("ERROR: Response body is completely empty!");
+      Serial.println("This suggests an HTTP client issue or API rejection");
+      return data;
+    }
 
     if (parseForecastJson(response.body, data)) {
       data.isValid = true;
+      Serial.println("JSON parsing successful");
+    }
+    else {
+      Serial.println("JSON parsing failed");
     }
 
     return data;
@@ -74,6 +94,8 @@ public:
     DeserializationError error = deserializeJson(doc, jsonString);
     if (error) {
       Serial.println("JSON parsing failed");
+      Serial.println(error.c_str());
+      Serial.println(jsonString);
       return false;
     }
 
