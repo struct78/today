@@ -36,8 +36,6 @@ public:
       return data;
     }
 
-    Logger::log("Pool API response: " + response.body);
-
     if (parsePoolJson(response.body, data)) {
       data.timeAgo = timeManager->formatTimeAgo(data.timestamp);
       data.isValid = true;
@@ -50,7 +48,7 @@ public:
     return data;
   }
 
-  bool parsePoolJson(const String& jsonString, PoolTemperatureData& data) {
+  bool parsePoolJson(const char* jsonString, PoolTemperatureData& data) {
     DynamicJsonDocument doc(1024);
 
     DeserializationError error = deserializeJson(doc, jsonString);
@@ -82,7 +80,7 @@ public:
 
     PoolTemperatureData data = { "", 0.0f, 0, "", false };
 
-    if (parsePoolJson(String(testPoolJson), data)) {
+    if (parsePoolJson(testPoolJson, data)) {
       data.timeAgo = "2 hours 13 minutes ago"; // Static test value
       data.isValid = true;
     }

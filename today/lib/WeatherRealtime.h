@@ -46,7 +46,7 @@ public:
     return data;
   }
 
-  bool parseRealtimeJson(const String& jsonString, RealtimeWeatherData& data) {
+  bool parseRealtimeJson(const char* jsonString, RealtimeWeatherData& data) {
     DynamicJsonDocument doc(2048);
 
     DeserializationError error = deserializeJson(doc, jsonString);

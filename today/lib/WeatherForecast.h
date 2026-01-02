@@ -63,7 +63,7 @@ public:
     Serial.println("Success: " + String(response.isSuccess ? "true" : "false"));
     Serial.println("Status Code: " + String(response.statusCode));
     Serial.println("Error: " + response.error);
-    Serial.println("Body length: " + String(response.body.length()));
+    Serial.println("Body length: " + String(response.bodyLength));
 
     if (!response.isSuccess) {
       Serial.println("Failed to fetch forecast data: " + response.error);
@@ -71,7 +71,7 @@ public:
       return data;
     }
 
-    if (response.body.length() == 0) {
+    if (response.bodyLength == 0) {
       Serial.println("ERROR: Response body is completely empty!");
       Serial.println("This suggests an HTTP client issue or API rejection");
       return data;
@@ -88,7 +88,7 @@ public:
     return data;
   }
 
-  bool parseForecastJson(const String& jsonString, ForecastData& data) {
+  bool parseForecastJson(const char* jsonString, ForecastData& data) {
     DynamicJsonDocument doc(16384); // Larger buffer for both hourly and daily data
 
     DeserializationError error = deserializeJson(doc, jsonString);

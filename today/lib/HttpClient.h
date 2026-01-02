@@ -6,9 +6,65 @@
 
 struct HttpResponse {
   int statusCode;
-  String body;
+  char* body;          // Changed to char pointer for large responses
+  int bodyLength;      // Track the actual length
+  int bodyCapacity;    // Track allocated capacity
   bool isSuccess;
   String error;
+
+  HttpResponse() : body(nullptr), bodyLength(0), bodyCapacity(0) {}
+
+  ~HttpResponse() {
+    if (body) {
+      free(body);
+      body = nullptr;
+    }
+  }
+
+  // Copy constructor
+  HttpResponse(const HttpResponse& other) {
+    statusCode = other.statusCode;
+    isSuccess = other.isSuccess;
+    error = other.error;
+    bodyLength = other.bodyLength;
+    bodyCapacity = other.bodyCapacity;
+
+    if (other.body && other.bodyLength > 0) {
+      body = (char*)malloc(bodyCapacity);
+      if (body) {
+        memcpy(body, other.body, bodyLength);
+      }
+    }
+    else {
+      body = nullptr;
+    }
+  }
+
+  // Assignment operator
+  HttpResponse& operator=(const HttpResponse& other) {
+    if (this != &other) {
+      if (body) {
+        free(body);
+      }
+
+      statusCode = other.statusCode;
+      isSuccess = other.isSuccess;
+      error = other.error;
+      bodyLength = other.bodyLength;
+      bodyCapacity = other.bodyCapacity;
+
+      if (other.body && other.bodyLength > 0) {
+        body = (char*)malloc(bodyCapacity);
+        if (body) {
+          memcpy(body, other.body, bodyLength);
+        }
+      }
+      else {
+        body = nullptr;
+      }
+    }
+    return *this;
+  }
 };
 
 class SimpleHttpClient {
@@ -22,7 +78,9 @@ public:
   }
 
   HttpResponse get(const String& host, const String& path, int port = 443, bool useSSLConnect = false) {
-    HttpResponse response = { 0, "", false, "" };
+    HttpResponse response;
+    response.statusCode = 0;
+    response.isSuccess = false;
 
     if (!checkConnection()) {
       response.error = "WiFi not connected";
@@ -58,96 +116,6 @@ public:
 private:
   bool checkConnection() {
     return WiFi.status() == WL_CONNECTED;
-  }
-
-  // Manual HTTP method for problematic APIs (inspired by working pool API code)
-  HttpResponse getManualHttp(const String& host, const String& path, int port = 443) {
-    HttpResponse response = { 0, "", false, "" };
-
-    Logger::log("Using manual HTTP for: " + host);
-
-    // Connect using SSL
-    if (!wifiSSLClient.connectSSL(host.c_str(), port)) {
-      response.error = "Failed to connect to " + host;
-      Logger::log(response.error);
-      return response;
-    }
-
-    Logger::log("SSL connection established");
-
-    // Send manual HTTP request (similar to your working code)
-    wifiSSLClient.print("GET ");
-    wifiSSLClient.print(path.c_str());
-    wifiSSLClient.println(" HTTP/1.1");
-    wifiSSLClient.print("Host: ");
-    wifiSSLClient.println(host.c_str());
-    wifiSSLClient.println("User-Agent: Today/1.0");
-    wifiSSLClient.println("Connection: close");
-    wifiSSLClient.println();
-
-    Logger::log("HTTP request sent manually");
-
-    // Read response
-    unsigned long startTime = millis();
-    String responseText = "";
-    bool headersEnded = false;
-    int statusCode = 0;
-
-    // Wait for response with timeout
-    while (millis() - startTime < 30000) { // 30 second timeout
-      if (wifiSSLClient.available()) {
-        String line = "";
-
-        // Read line character by character
-        while (wifiSSLClient.available()) {
-          char c = wifiSSLClient.read();
-          if (c == '\n') break;
-          if (c != '\r') line += c;
-        }
-
-        if (!headersEnded) {
-          // Parse status line
-          if (line.startsWith("HTTP/") && statusCode == 0) {
-            int firstSpace = line.indexOf(' ');
-            int secondSpace = line.indexOf(' ', firstSpace + 1);
-            if (firstSpace > 0 && secondSpace > firstSpace) {
-              statusCode = line.substring(firstSpace + 1, secondSpace).toInt();
-              Logger::log("Status code: " + String(statusCode));
-            }
-          }
-
-          // Check for end of headers
-          if (line.length() <= 2) { // Empty line or just \r\n
-            headersEnded = true;
-            Logger::log("Headers ended, reading body...");
-          }
-        }
-        else {
-          // Read body
-          responseText += line;
-        }
-      }
-      else {
-        delay(100);
-      }
-    }
-
-    wifiSSLClient.stop();
-
-    response.statusCode = statusCode;
-    responseText.trim();
-    response.body = responseText;
-
-    if (statusCode == 200 && response.body.length() > 0) {
-      response.isSuccess = true;
-      Logger::log("Manual HTTP successful: " + String(response.body.length()) + " bytes");
-    }
-    else {
-      response.error = "Manual HTTP failed or empty response";
-      Logger::log(response.error);
-    }
-
-    return response;
   }
 
   bool testConnection(const String& host, int port, bool useSSLConnect = false) {
@@ -194,7 +162,9 @@ private:
   }
 
   HttpResponse processResponse(HttpClient& http) {
-    HttpResponse response = { 0, "", false, "" };
+    HttpResponse response;
+    response.statusCode = 0;
+    response.isSuccess = false;
 
     Logger::log("Waiting for response...");
 
@@ -237,32 +207,56 @@ private:
     // Try to read body with better handling for large responses
     Logger::log("Reading response body...");
 
-    // Use the built-in readString method which is more reliable
-    String body = "";
+    // Allocate buffer for large response (100KB should be enough)
+    int bufferSize = (contentLength > 0) ? contentLength + 100 : 100000;
+    response.body = (char*)malloc(bufferSize);
+    response.bodyCapacity = bufferSize;
 
-    if (contentLength > 0) {
-      body.reserve(contentLength + 100);
-      Logger::log("Reserved " + String(contentLength + 100) + " bytes for body");
+    if (!response.body) {
+      response.error = "Failed to allocate memory for response body";
+      Logger::log(response.error);
+      http.stop();
+      return response;
     }
+
+    Logger::log("Allocated " + String(bufferSize) + " bytes for response body");
 
     unsigned long bodyStart = millis();
+    int totalBytesRead = 0;
 
-    // Use readString() method which handles buffering internally
-    while (http.available() && millis() - bodyStart < 30000) {
-      String chunk = http.readString();
-      body += chunk;
+    // Read character by character into char array
+    while (millis() - bodyStart < 60000 && totalBytesRead < bufferSize - 1) {
+      if (http.available()) {
+        char c = http.read();
+        response.body[totalBytesRead] = c;
+        totalBytesRead++;
 
-      // Log progress for large responses
-      if (body.length() % 5000 < chunk.length()) {
-        Logger::log("Read " + String(body.length()) + " bytes so far");
+        // Log progress every 10KB
+        if (totalBytesRead % 10000 == 0) {
+          Logger::log("Read " + String(totalBytesRead) + " bytes so far");
+        }
+      }
+      else {
+        delay(10); // Small delay when no data available
+        
+        // If we haven't received any data for 5 seconds and the connection is closed, break
+        if (millis() - bodyStart > 5000 && !http.connected()) {
+          Logger::log("Connection closed and no more data expected");
+          break;
+        }
       }
 
-      Logger::log(chunk);
-      // delay(1); // Small delay to prevent watchdog issues
+      // If we know the content length and have read it all, break
+      if (contentLength > 0 && totalBytesRead >= contentLength) {
+        Logger::log("Read all expected content (" + String(contentLength) + " bytes)");
+        break;
+      }
     }
 
-    response.body = body;
-    Logger::log("Response received, length: " + String(response.body.length()));
+    // Null terminate the response
+    response.body[totalBytesRead] = '\0';
+    response.bodyLength = totalBytesRead;
+    Logger::log("Response received, length: " + String(response.bodyLength));
 
     if (response.statusCode == 200) {
       response.isSuccess = true;
@@ -271,8 +265,8 @@ private:
     else {
       response.error = "HTTP error: " + String(response.statusCode);
       Logger::log(response.error);
-      if (response.body.length() > 0 && response.body.length() < 500) {
-        Logger::log("Response body: " + response.body);
+      if (response.bodyLength > 0 && response.bodyLength < 500) {
+        Logger::log("Response body: " + String(response.body));
       }
     }
 

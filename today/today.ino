@@ -140,7 +140,7 @@ RealtimeWeatherData loadTestRealtimeData() {
   RealtimeWeatherData data = { 0, 0, 0, 0, 0, 0, false };
 
   // Use the existing parsing function from WeatherRealtime class
-  if (!realtimeWeather || !realtimeWeather->parseRealtimeJson(String(testRealtimeJson), data)) {
+  if (!realtimeWeather || !realtimeWeather->parseRealtimeJson(testRealtimeJson, data)) {
     Logger::log("Failed to parse test realtime data");
     return data;
   }
@@ -293,7 +293,7 @@ ForecastData loadTestForecastData() {
   Logger::log("forecastWeather object exists, calling parseForecastJson...");
 
   // Use the existing parsing function from WeatherForecast class
-  if (!forecastWeather->parseForecastJson(String(testForecastJson), data)) {
+  if (!forecastWeather->parseForecastJson(testForecastJson, data)) {
     Logger::log("Failed to parse test forecast data");
     return data;
   }
