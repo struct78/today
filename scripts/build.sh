@@ -19,7 +19,6 @@ echo "1. Checking installed libraries:"
 echo "ArduinoJson: $(find /Users/dave/Documents/Arduino/libraries -name "ArduinoJson" 2>/dev/null)"
 echo "ArduinoHttpClient: $(find /Users/dave/Documents/Arduino/libraries -name "ArduinoHttpClient" 2>/dev/null)"
 echo "Arduino_GigaDisplay_GFX: $(find /Users/dave/Documents/Arduino/libraries -name "Arduino_GigaDisplay_GFX" 2>/dev/null)"
-echo "AUnit: $(find /Users/dave/Documents/Arduino/libraries -name "AUnit" 2>/dev/null)"
 echo
 
 echo "2. Checking Arduino Giga core:"

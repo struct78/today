@@ -1,72 +1,63 @@
-// TimeManager.h - Better time handling for Arduino projects
+// TimeManager.h - Time handling using ezTime library
 #pragma once
-#include <WiFi.h>
-#include <WiFiUdp.h>
+
+#include <Arduino.h>
+#include <ezTime.h>
 #include "Logger.h"
+#include "../environment.h"
 
 class TimeManager {
 private:
-  static WiFiUDP udp;
-  static unsigned long ntpSyncTime;
-  static unsigned long ntpSyncMillis;
+  static Timezone localTz;
   static bool timeIsSynced;
-
-  static const char* ntpServer;
-  static const int ntpPort = 123;
-  static const int NTP_PACKET_SIZE = 48;
 
 public:
   static void begin() {
-    udp.begin(8888);
     timeIsSynced = false;
-    ntpSyncTime = 0;
-    ntpSyncMillis = 0;
+
+    // Set ezTime to use events (non-blocking)
+    ezt::setInterval(60);  // Check NTP every 60 seconds if needed
+
+    Logger::log("TimeManager initialized with timezone: " + String(TIMEZONE));
   }
 
   static bool syncWithNTP() {
-    if (WiFi.status() != WL_CONNECTED) {
-      Logger::log("WiFi not connected - cannot sync NTP");
-      return false;
-    }
-
     Logger::log("Syncing time with NTP server...");
 
-    // Send NTP request
-    if (!sendNTPRequest()) {
-      Logger::log("Failed to send NTP request");
-      return false;
-    }
+    // Set debug level to see what's happening
+    ezt::setDebug(INFO);
 
-    // Wait for response with timeout
-    unsigned long timeout = millis() + 5000; // 5 second timeout
-    while (millis() < timeout) {
-      if (udp.available()) {
-        unsigned long ntpTime = parseNTPResponse();
-        if (ntpTime > 0) {
-          ntpSyncTime = ntpTime;
-          ntpSyncMillis = millis();
-          timeIsSynced = true;
+    // Try to sync with timeout using events() loop
+    unsigned long startTime = millis();
+    const unsigned long timeout = 15000; // 15 second timeout
 
-          Logger::log("NTP sync successful. Unix time: " + String(ntpTime));
-          return true;
-        }
-      }
+    while (ezt::timeStatus() != timeSet) {
+      ezt::events();
       delay(100);
+
+      if (millis() - startTime > timeout) {
+        Logger::log("NTP sync timeout after 15 seconds");
+        Logger::log("Time status: " + String(ezt::timeStatus()));
+        return false;
+      }
     }
 
-    Logger::log("NTP sync timeout");
-    return false;
+    Logger::log("NTP time synced, setting timezone...");
+
+    // Set the timezone using POSIX string instead of network lookup
+    // This avoids the timezoned.rop.nl network call
+    localTz.setPosix(TIMEZONE_POSIX);
+
+    timeIsSynced = true;
+    Logger::log("NTP sync successful. Local time: " + localTz.dateTime());
+    return true;
   }
 
   static unsigned long getCurrentUnixTime() {
     if (!timeIsSynced) {
-      // Return 0 if time is not synced
       return 0;
     }
-
-    // Calculate current time based on NTP sync and elapsed millis
-    unsigned long elapsedSeconds = (millis() - ntpSyncMillis) / 1000;
-    return ntpSyncTime + elapsedSeconds;
+    return ezt::now();  // ezTime's UTC timestamp
   }
 
   static String formatTimeAgo(unsigned long timestamp) {
@@ -76,8 +67,7 @@ public:
 
     unsigned long currentTime = getCurrentUnixTime();
     if (currentTime == 0) {
-      // Fallback if NTP is not synced
-      return formatRelativeTime(timestamp);
+      return "unknown";
     }
 
     // Convert millisecond timestamp to seconds if needed
@@ -85,7 +75,7 @@ public:
       timestamp / 1000 : timestamp;
 
     if (currentTime < timestampSeconds) {
-      return "recently"; // Avoid negative time
+      return "recently";
     }
 
     unsigned long diffSeconds = currentTime - timestampSeconds;
@@ -93,62 +83,83 @@ public:
   }
 
   static bool isTimeSynced() {
-    return timeIsSynced;
+    return timeIsSynced && ezt::timeStatus() == timeSet;
+  }
+
+  // Convert ISO8601 time string (e.g., "2024-01-15T14:00:00Z") to local hour (0-23)
+  static int getLocalHourFromISO(const String& isoTime) {
+    // Parse the ISO time string
+    int year = isoTime.substring(0, 4).toInt();
+    int month = isoTime.substring(5, 7).toInt();
+    int day = isoTime.substring(8, 10).toInt();
+    int hour = isoTime.substring(11, 13).toInt();
+    int minute = isoTime.substring(14, 16).toInt();
+    int second = isoTime.substring(17, 19).toInt();
+
+    // Create UTC time using ezTime
+    tmElements_t tm;
+    tm.Year = year - 1970;  // ezTime uses years since 1970
+    tm.Month = month;
+    tm.Day = day;
+    tm.Hour = hour;
+    tm.Minute = minute;
+    tm.Second = second;
+
+    // Convert to Unix timestamp (UTC)
+    time_t utcTime = ezt::makeTime(tm);
+
+    // Convert to local time and return hour
+    return localTz.hour(utcTime);
+  }
+
+  // Get current local hour (0-23)
+  static int getCurrentLocalHour() {
+    return localTz.hour();
+  }
+
+  // Get current local minute (0-59)
+  static int getCurrentLocalMinute() {
+    return localTz.minute();
+  }
+
+  // Format local time as HH:MM string
+  static String formatLocalTime(unsigned long utcTimestamp) {
+    if (utcTimestamp == 0) {
+      return "--:--";
+    }
+    return localTz.dateTime(utcTimestamp, "H:i");
+  }
+
+  // Get current local time as formatted string
+  static String getCurrentLocalTimeStr() {
+    return localTz.dateTime("H:i");
+  }
+
+  // Check if DST is currently active
+  static bool isDSTActive() {
+    return localTz.isDST();
+  }
+
+  // Get current timezone abbreviation (e.g., "AEST" or "AEDT")
+  static String getTimezoneAbbr() {
+    return localTz.getTimezoneName();
   }
 
   static void resyncIfNeeded() {
-    // Resync every 24 hours to account for clock drift
-    const unsigned long resyncInterval = 24 * 60 * 60 * 1000; // 24 hours in ms
-
-    if (timeIsSynced && (millis() - ntpSyncMillis > resyncInterval)) {
-      Logger::log("Time sync is stale, re-syncing...");
-      syncWithNTP();
-    }
+    // ezTime handles this automatically, but we can trigger a check
+    ezt::events();  // Process ezTime events
   }
 
 private:
-  static bool sendNTPRequest() {
-    byte ntpBuffer[NTP_PACKET_SIZE] = { 0 };
-
-    // Initialize NTP request packet
-    ntpBuffer[0] = 0b11100011;   // LI, Version, Mode
-    ntpBuffer[1] = 0;            // Stratum
-    ntpBuffer[2] = 6;            // Polling interval
-    ntpBuffer[3] = 0xEC;         // Peer Clock Precision
-
-    udp.beginPacket(ntpServer, ntpPort);
-    udp.write(ntpBuffer, NTP_PACKET_SIZE);
-    return udp.endPacket();
-  }
-
-  static unsigned long parseNTPResponse() {
-    if (udp.available() < NTP_PACKET_SIZE) {
-      return 0;
-    }
-
-    byte ntpBuffer[NTP_PACKET_SIZE];
-    udp.read(ntpBuffer, NTP_PACKET_SIZE);
-
-    // Extract timestamp from bytes 40-43 (transmit timestamp)
-    unsigned long timestamp = ((unsigned long)ntpBuffer[40] << 24) |
-      ((unsigned long)ntpBuffer[41] << 16) |
-      ((unsigned long)ntpBuffer[42] << 8) |
-      (unsigned long)ntpBuffer[43];
-
-    // Convert from NTP time (1900 epoch) to Unix time (1970 epoch)
-    const unsigned long seventyYears = 2208988800UL;
-    return timestamp - seventyYears;
-  }
-
   static String formatDuration(unsigned long totalSeconds) {
     if (totalSeconds < 60) {
       return String(totalSeconds) + " seconds ago";
     }
-    else if (totalSeconds < 3600) { // Less than 1 hour
+    else if (totalSeconds < 3600) {
       unsigned long minutes = totalSeconds / 60;
       return String(minutes) + (minutes == 1 ? " minute" : " minutes") + " ago";
     }
-    else if (totalSeconds < 86400) { // Less than 1 day
+    else if (totalSeconds < 86400) {
       unsigned long hours = totalSeconds / 3600;
       unsigned long minutes = (totalSeconds % 3600) / 60;
 
@@ -158,12 +169,12 @@ private:
       }
       return result + " ago";
     }
-    else if (totalSeconds < 604800) { // Less than 1 week
+    else if (totalSeconds < 604800) {
       unsigned long days = totalSeconds / 86400;
       unsigned long hours = (totalSeconds % 86400) / 3600;
 
       String result = String(days) + (days == 1 ? " day" : " days");
-      if (hours > 0 && days < 7) { // Only show hours if less than a week
+      if (hours > 0 && days < 7) {
         result += " " + String(hours) + (hours == 1 ? " hour" : " hours");
       }
       return result + " ago";
@@ -173,31 +184,8 @@ private:
       return String(weeks) + (weeks == 1 ? " week" : " weeks") + " ago";
     }
   }
-
-  static String formatRelativeTime(unsigned long timestamp) {
-    // Fallback method when NTP is not available
-    // This is less accurate but better than the original implementation
-
-    // Try to estimate based on reasonable assumptions
-    unsigned long currentEstimate = 1700000000UL; // Rough Nov 2023 baseline
-    unsigned long bootSeconds = millis() / 1000;
-    unsigned long estimatedNow = currentEstimate + bootSeconds;
-
-    unsigned long timestampSeconds = (timestamp > 1000000000000UL) ?
-      timestamp / 1000 : timestamp;
-
-    if (estimatedNow < timestampSeconds) {
-      return "recently";
-    }
-
-    unsigned long diff = estimatedNow - timestampSeconds;
-    return formatDuration(diff);
-  }
 };
 
 // Static member definitions
-WiFiUDP TimeManager::udp;
-unsigned long TimeManager::ntpSyncTime = 0;
-unsigned long TimeManager::ntpSyncMillis = 0;
+Timezone TimeManager::localTz;
 bool TimeManager::timeIsSynced = false;
-const char* TimeManager::ntpServer = "au.pool.ntp.org";

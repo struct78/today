@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include <WiFi.h>
 #include "credentials.h"
+#include "environment.h"
 #include "lib/Logger.h"
 #include "lib/TimeManager.h"
 #include "lib/WeatherRealtime.h"
@@ -36,11 +37,14 @@ ForecastData loadTestForecastData();
 void setup() {
   Serial.begin(115200);
   initScreen();
+  Display::displayLoadingMessage("Initialising...");
 
   if (offlineMode) {
     initializeOfflineMode();
     return;
   }
+
+  Display::displayLoadingMessage("Connecting to WiFi...");
 
   if (!initializeWiFiConnection()) {
     delay(2000);
@@ -90,11 +94,18 @@ void updateWeatherData() {
   }
 
   // Don't clear screen here as slideshow will handle display
+  Display::displayLoadingMessage("Fetching real time weather...");
   fetchAndDisplayRealtime();
   delay(10);
+
+  Display::displayLoadingMessage("Fetching forecast weather...");
   fetchAndDisplayForecast();
   delay(10);
+
+  Display::displayLoadingMessage("Fetching pool temperature...");
   fetchAndDisplayPoolTemp();
+
+  Display::displayLoadingMessage("Starting today...");
 }
 
 void clearScreen() {
@@ -344,6 +355,7 @@ bool initializeWiFiConnection() {
 }
 
 void initializeWeatherClients() {
+  Display::displayLoadingMessage("Getting local time...");
   timeManager = new TimeManager();
   timeManager->begin();
   timeManager->syncWithNTP(); // Initial NTP sync
@@ -352,7 +364,19 @@ void initializeWeatherClients() {
   forecastWeather = new WeatherForecast(API_KEY, LOCATION);
   poolTemperature = new PoolTemperature(timeManager);
   Logger::log("Fetching initial weather data...");
-  updateWeatherData();
+
+  Display::displayLoadingMessage("Fetching real time weather...");
+  fetchAndDisplayRealtime();
+  delay(10);
+
+  Display::displayLoadingMessage("Fetching forecast weather...");
+  fetchAndDisplayForecast();
+  delay(10);
+
+  Display::displayLoadingMessage("Fetching pool temperature...");
+  fetchAndDisplayPoolTemp();
+
+  Display::displayLoadingMessage("Starting today...");
 }
 
 bool isUpdateRequired() {

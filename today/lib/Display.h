@@ -549,9 +549,8 @@ public:
 
       const HourlyForecastData& hour = currentForecastData.hourly[i];
 
-      // Extract hour from time string (simplified)
-      String timeStr = hour.time;
-      int hourNum = timeStr.substring(11, 13).toInt();
+      // Convert UTC time to local time (handles DST automatically)
+      int hourNum = TimeManager::getLocalHourFromISO(hour.time);
 
       // Draw cell border
       display.drawRect(x, y, cellWidth, cellHeight, GRAY);
@@ -760,9 +759,21 @@ public:
     if (!displayOn)
       return; // Don't display if screen is off
 
-    printLine("=== ERROR ===", RED);
-    printLine(message, RED);
-    printLine("", RED);
+    printLine("=== ERROR ===", WHITE);
+    printLine(message, WHITE);
+    printLine("", WHITE);
+  }
+
+  static void displayLoadingMessage(const String& message) {
+    // Display loading message at bottom left in white text
+    // Position text at the very bottom of the screen
+    int textY = display.height() - 40;
+
+    display.fillRect(0, textY, display.width(), 40, DEEP_SKY_BLUE);
+
+    display.setTextColor(WHITE);
+    display.setCursor(marginX, textY);
+    display.print(message);
   }
 
   static void updateForecastData(const ForecastData& forecastData) {
