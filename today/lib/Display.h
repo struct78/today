@@ -227,12 +227,6 @@ private:
     display.fillCircle(cloudX, cloudY - 24, 54, WHITE);
     display.fillCircle(cloudX + 36, cloudY, 45, WHITE);
     display.fillCircle(cloudX + 60, cloudY + 15, 36, WHITE);
-
-    // Outline for definition - tripled radius
-    display.drawCircle(cloudX - 36, cloudY, 45, LIGHT_GRAY);
-    display.drawCircle(cloudX, cloudY - 24, 54, LIGHT_GRAY);
-    display.drawCircle(cloudX + 36, cloudY, 45, LIGHT_GRAY);
-    display.drawCircle(cloudX + 60, cloudY + 15, 36, LIGHT_GRAY);
   }
 
   static void drawUVIcon(int centerX, int centerY) {
@@ -274,8 +268,8 @@ private:
       for (int x = -90; x <= 90; x += 15) {
         int y1 = waveBaseY + (int)(6 * sin(x * 0.1));
         int y2 = waveBaseY + (int)(6 * sin((x + 15) * 0.1));
-        display.drawLine(swimmerX + x, y1, swimmerX + x + 15, y2, CYAN);
-        display.drawLine(swimmerX + x, y1 + 1, swimmerX + x + 15, y2 + 1, CYAN);
+        display.drawLine(swimmerX + x, y1, swimmerX + x + 15, y2, WHITE);
+        display.drawLine(swimmerX + x, y1 + 1, swimmerX + x + 15, y2 + 1, WHITE);
       }
     }
   }
